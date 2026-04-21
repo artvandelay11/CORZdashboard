@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CORZ Investment Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080b0f;
+    --bg1: #0e1318;
+    --bg2: #131920;
+    --bg3: #1a2330;
+    --border: #1e2d3d;
+    --border2: #253545;
+    --text: #c8d8e8;
+    --text-dim: #5a7a9a;
+    --text-muted: #3a5470;
+    --green: #00e5a0;
+    --green-dim: #00b37a;
+    --red: #ff4d6d;
+    --red-dim: #cc2244;
+    --amber: #ffd166;
+    --blue: #4fc3f7;
+    --blue-dim: #0288d1;
+    --corz: #00e5a0;
+    --accent: #1de9b6;
+    --glow: 0 0 20px rgba(0,229,160,0.15);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--bg1);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 20px; }
+  .logo { font-size: 15px; font-weight: 700; letter-spacing: 0.15em; color: var(--corz); }
+  .logo span { color: var(--text-dim); font-weight: 300; }
+  .header-meta { font-size: 10px; color: var(--text-dim); letter-spacing: 0.05em; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .refresh-btn {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 5px 12px;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    transition: all 0.15s;
+  }
+  .refresh-btn:hover { border-color: var(--green); color: var(--green); }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* SPOTLIGHT */
+  .spotlight {
+    background: linear-gradient(135deg, #0a1520 0%, #0d1f2d 50%, #091520 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 32px;
+    align-items: center;
+  }
+  .spot-main { display: flex; align-items: baseline; gap: 16px; }
+  .spot-ticker { font-size: 28px; font-weight: 700; color: var(--corz); letter-spacing: 0.1em; text-shadow: var(--glow); }
+  .spot-name { font-size: 11px; color: var(--text-dim); letter-spacing: 0.08em; }
+  .spot-price { font-size: 26px; font-weight: 600; color: var(--text); }
+  .spot-change { font-size: 14px; font-weight: 500; }
+  .spot-stats { display: flex; gap: 32px; }
+  .spot-stat { text-align: center; }
+  .spot-stat-label { font-size: 9px; color: var(--text-muted); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 3px; }
+  .spot-stat-val { font-size: 13px; font-weight: 600; }
+  .spot-right { text-align: right; }
+  .spot-pt { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
+  .spot-upside { font-size: 18px; font-weight: 700; color: var(--green); }
+
+  /* TABS */
+  .tabs {
+    background: var(--bg1);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    gap: 0;
+  }
+  .tab {
+    padding: 10px 20px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--corz); border-bottom-color: var(--corz); }
+
+  /* MAIN */
+  .main { padding: 20px 24px; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* SECTION */
+  .section { margin-bottom: 24px; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .section-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 2px 8px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+  }
+  .section-line { flex: 1; height: 1px; background: var(--border); }
+
+  /* TABLE */
+  .data-table { width: 100%; border-collapse: collapse; }
+  .data-table thead tr { border-bottom: 1px solid var(--border2); }
+  .data-table th {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-align: right;
+    padding: 6px 10px;
+    white-space: nowrap;
+  }
+  .data-table th:first-child, .data-table th:nth-child(2) { text-align: left; }
+  .data-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .data-table tbody tr:hover { background: var(--bg2); }
+  .data-table tbody tr.corz-row { background: rgba(0,229,160,0.04); border-left: 2px solid var(--corz); }
+  .data-table tbody tr.corz-row:hover { background: rgba(0,229,160,0.08); }
+  .data-table td {
+    padding: 8px 10px;
+    text-align: right;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+  .data-table td:first-child { text-align: left; }
+  .data-table td:nth-child(2) { text-align: left; color: var(--text-dim); font-size: 11px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+  .ticker-cell { font-weight: 700; letter-spacing: 0.08em; font-size: 13px; color: var(--text); }
+  .ticker-cell.corz { color: var(--corz); text-shadow: 0 0 10px rgba(0,229,160,0.3); }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+  .neu { color: var(--text-dim); }
+  .loading-cell { color: var(--text-muted); font-size: 11px; }
+  .pt-cell { color: var(--amber); }
+  .upside-pos { color: var(--green); font-weight: 600; }
+  .upside-neg { color: var(--red); font-weight: 600; }
+  .mktcap-cell { color: var(--text-dim); font-size: 11px; }
+
+  /* MINI SPARKBAR */
+  .bar-container { display: inline-flex; align-items: center; gap: 4px; }
+  .bar { height: 2px; border-radius: 1px; min-width: 2px; }
+
+  /* FINANCIALS */
+  .fin-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+  }
+  .fin-label { font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; }
+  .fin-select {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+  .fin-select option { background: var(--bg1); }
+  .period-toggle { display: flex; gap: 0; }
+  .period-btn {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 4px 12px;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    transition: all 0.1s;
+  }
+  .period-btn:first-child { border-right: none; }
+  .period-btn.active { background: var(--bg2); color: var(--corz); border-color: var(--corz); }
+
+  .fin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .fin-block { background: var(--bg1); border: 1px solid var(--border); }
+  .fin-block-header {
+    padding: 10px 16px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+  }
+  .fin-table { width: 100%; border-collapse: collapse; }
+  .fin-table th {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    text-align: right;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .fin-table th:first-child { text-align: left; }
+  .fin-table td {
+    padding: 7px 12px;
+    text-align: right;
+    font-size: 11px;
+    border-bottom: 1px solid rgba(30,45,61,0.5);
+  }
+  .fin-table td:first-child { text-align: left; color: var(--text-dim); font-size: 11px; }
+  .fin-table tbody tr:hover { background: var(--bg2); }
+  .fin-row-bold td { font-weight: 600; color: var(--text); }
+  .fin-section-header td {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 10px 12px 4px;
+    background: var(--bg2);
+  }
+
+  /* ANALYST */
+  .analyst-controls {
+    display: flex; align-items: center; gap: 16px; margin-bottom: 20px;
+    padding: 12px 16px; background: var(--bg2); border: 1px solid var(--border);
+  }
+  .consensus-badge {
+    display: inline-block; padding: 2px 10px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+    border: 1px solid;
+  }
+  .consensus-buy { color: var(--green); border-color: var(--green); background: rgba(0,229,160,0.08); }
+  .consensus-hold { color: var(--amber); border-color: var(--amber); background: rgba(255,209,102,0.08); }
+  .consensus-sell { color: var(--red); border-color: var(--red); background: rgba(255,77,109,0.08); }
+
+  /* LOADING */
+  .loading-overlay {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 1000; transition: opacity 0.4s;
+  }
+  .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  .loading-title { font-size: 14px; font-weight: 700; letter-spacing: 0.2em; color: var(--corz); margin-bottom: 12px; }
+  .loading-bar { width: 240px; height: 2px; background: var(--bg3); overflow: hidden; }
+  .loading-progress { height: 100%; background: var(--corz); animation: load 2s ease forwards; }
+  @keyframes load { from{width:0%} to{width:100%} }
+  .loading-sub { font-size: 10px; color: var(--text-dim); margin-top: 10px; letter-spacing: 0.1em; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg1); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); }
+
+  /* RESPONSIVE column hide */
+  @media (max-width: 1100px) { .hide-md { display: none; } }
+  @media (max-width: 800px) { .hide-sm { display: none; } .fin-grid { grid-template-columns: 1fr; } }
+
+  .vol-chip {
+    font-size: 9px; padding: 1px 5px; border-radius: 2px;
+    display: inline-block; vertical-align: middle;
+  }
+  .vol-h { background: rgba(255,77,109,0.15); color: var(--red); }
+  .vol-m { background: rgba(255,209,102,0.12); color: var(--amber); }
+  .vol-l { background: rgba(0,229,160,0.1); color: var(--green); }
+
+  .group-divider { height: 24px; }
+  .error-msg { color: var(--red); font-size: 11px; padding: 8px; }
+
+  .price-range { font-size: 10px; color: var(--text-muted); }
+  .range-bar-wrap { display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
+  .range-bar { width: 60px; height: 3px; background: var(--bg3); position: relative; border-radius: 2px; overflow: visible; }
+  .range-marker { position: absolute; top: -2px; width: 3px; height: 7px; background: var(--amber); border-radius: 1px; }
+
+  .col-head-sort { cursor: pointer; user-select: none; }
+  .col-head-sort:hover { color: var(--text); }
+
+  .info-row td { font-size: 10px; color: var(--text-muted); padding: 4px 10px; }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-title">CORZ DASHBOARD</div>
+  <div class="loading-bar"><div class="loading-progress"></div></div>
+  <div class="loading-sub" id="loadingSub">Fetching market data…</div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo">CORZ <span>/ INVESTMENT DASHBOARD</span></div>
+    <div class="header-meta" id="lastUpdated">—</div>
+  </div>
+  <div class="header-right">
+    <div class="status-dot" id="statusDot"></div>
+    <button class="refresh-btn" onclick="refreshAll()">↻ REFRESH</button>
+  </div>
+</div>
+
+<!-- SPOTLIGHT: CORZ -->
+<div class="spotlight" id="spotlight">
+  <div>
+    <div class="spot-main">
+      <div class="spot-ticker">CORZ</div>
+      <div>
+        <div class="spot-name">Core Scientific, Inc. · HPC / Bitcoin Mining</div>
+        <div style="display:flex; align-items:baseline; gap:12px; margin-top:4px;">
+          <div class="spot-price" id="sp-price">—</div>
+          <div class="spot-change" id="sp-change">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="spot-stats">
+    <div class="spot-stat">
+      <div class="spot-stat-label">1W</div>
+      <div class="spot-stat-val" id="sp-1w">—</div>
+    </div>
+    <div class="spot-stat">
+      <div class="spot-stat-label">1M</div>
+      <div class="spot-stat-val" id="sp-1m">—</div>
+    </div>
+    <div class="spot-stat">
+      <div class="spot-stat-label">YTD</div>
+      <div class="spot-stat-val" id="sp-ytd">—</div>
+    </div>
+    <div class="spot-stat">
+      <div class="spot-stat-label">1Y</div>
+      <div class="spot-stat-val" id="sp-1y">—</div>
+    </div>
+    <div class="spot-stat">
+      <div class="spot-stat-label">Mkt Cap</div>
+      <div class="spot-stat-val" id="sp-mktcap">—</div>
+    </div>
+    <div class="spot-stat">
+      <div class="spot-stat-label">52W Range</div>
+      <div class="spot-stat-val" id="sp-range">—</div>
+    </div>
+    <div class="spot-stat">
+      <div class="spot-stat-label">Volume</div>
+      <div class="spot-stat-val" id="sp-vol">—</div>
+    </div>
+  </div>
+  <div class="spot-right">
+    <div class="spot-pt" id="sp-pt-label">Analyst PT —</div>
+    <div class="spot-upside" id="sp-upside">—</div>
+    <div style="font-size:10px; color:var(--text-muted); margin-top:4px;" id="sp-consensus">—</div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('overview')">OVERVIEW</div>
+  <div class="tab" onclick="switchTab('financials')">FINANCIALS</div>
+  <div class="tab" onclick="switchTab('analyst')">ANALYST TARGETS</div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- OVERVIEW TAB -->
+  <div class="tab-panel active" id="tab-overview">
+
+    <!-- Core Position -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-label" style="color:var(--corz); border-color:var(--corz);">Core Position</div>
+        <div class="section-line"></div>
+        <div style="font-size:9px;color:var(--text-muted);">HPC / Bitcoin Mining Infrastructure</div>
+      </div>
+      <table class="data-table" id="table-core">
+        <thead><tr id="thead-main"></tr></thead>
+        <tbody id="tbody-core"></tbody>
+      </table>
+    </div>
+
+    <!-- AI/HPC Transition Comps -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-label">AI/HPC Transition Comps</div>
+        <div class="section-line"></div>
+        <div style="font-size:9px;color:var(--text-muted);">Miners pivoting to AI/HPC hosting</div>
+      </div>
+      <table class="data-table" id="table-hpc">
+        <thead><tr id="thead-hpc"></tr></thead>
+        <tbody id="tbody-hpc"></tbody>
+      </table>
+    </div>
+
+    <!-- Demand Proxies -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-label" style="color:var(--blue); border-color:var(--blue);">Demand Proxies</div>
+        <div class="section-line"></div>
+        <div style="font-size:9px;color:var(--text-muted);">AI compute demand drivers · Hyperscalers & GPU</div>
+      </div>
+      <table class="data-table" id="table-demand">
+        <thead><tr id="thead-demand"></tr></thead>
+        <tbody id="tbody-demand"></tbody>
+      </table>
+    </div>
+
+    <!-- Buildout Bottlenecks -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-label" style="color:var(--amber); border-color:var(--amber);">Buildout Bottlenecks</div>
+        <div class="section-line"></div>
+        <div style="font-size:9px;color:var(--text-muted);">Power / electrical infrastructure enabling data center growth</div>
+      </div>
+      <table class="data-table" id="table-buildout">
+        <thead><tr id="thead-buildout"></tr></thead>
+        <tbody id="tbody-buildout"></tbody>
+      </table>
+    </div>
+
+    <!-- Legacy Mining -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-label" style="color:var(--text-muted); border-color:var(--border);">Legacy Mining Comps</div>
+        <div class="section-line"></div>
+        <div style="font-size:9px;color:var(--text-muted);">Lower-priority pure-play Bitcoin miners</div>
+      </div>
+      <table class="data-table" id="table-legacy">
+        <thead><tr id="thead-legacy"></tr></thead>
+        <tbody id="tbody-legacy"></tbody>
+      </table>
+    </div>
+
+  </div><!-- end overview -->
+
+  <!-- FINANCIALS TAB -->
+  <div class="tab-panel" id="tab-financials">
+    <div class="fin-controls">
+      <span class="fin-label">TICKER</span>
+      <select class="fin-select" id="finTicker" onchange="loadFinancials()">
+        <option value="CORZ">CORZ</option>
+        <option value="CRWV">CRWV</option>
+        <option value="APLD">APLD</option>
+        <option value="VRT">VRT</option>
+        <option value="CIFR">CIFR</option>
+        <option value="WULF">WULF</option>
+        <option value="HUT">HUT</option>
+        <option value="IREN">IREN</option>
+        <option value="MSFT">MSFT</option>
+        <option value="META">META</option>
+        <option value="NVDA">NVDA</option>
+        <option value="AMD">AMD</option>
+        <option value="ETN">ETN</option>
+        <option value="PWR">PWR</option>
+        <option value="HUBB">HUBB</option>
+        <option value="MARA">MARA</option>
+        <option value="RIOT">RIOT</option>
+        <option value="CLSK">CLSK</option>
+        <option value="BITF">BITF</option>
+      </select>
+      <span class="fin-label" style="margin-left:16px;">PERIOD</span>
+      <div class="period-toggle">
+        <button class="period-btn active" id="btn-annual" onclick="setPeriod('annual')">ANNUAL</button>
+        <button class="period-btn" id="btn-quarter" onclick="setPeriod('quarter')">QUARTERLY</button>
+      </div>
+      <span id="fin-loading" style="font-size:10px;color:var(--text-muted);margin-left:8px;"></span>
+    </div>
+
+    <div class="fin-grid">
+      <!-- Income Statement -->
+      <div class="fin-block">
+        <div class="fin-block-header">Income Statement</div>
+        <div id="fin-income">
+          <table class="fin-table">
+            <thead><tr id="fin-income-head"></tr></thead>
+            <tbody id="fin-income-body"><tr><td colspan="5" style="color:var(--text-muted);padding:20px;text-align:center;">Select a ticker to load financials</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Balance Sheet -->
+      <div class="fin-block">
+        <div class="fin-block-header">Balance Sheet</div>
+        <div id="fin-balance">
+          <table class="fin-table">
+            <thead><tr id="fin-balance-head"></tr></thead>
+            <tbody id="fin-balance-body"><tr><td colspan="5" style="color:var(--text-muted);padding:20px;text-align:center;">Select a ticker to load financials</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cash Flow -->
+    <div style="margin-top:20px;">
+      <div class="fin-block">
+        <div class="fin-block-header">Cash Flow Statement</div>
+        <div>
+          <table class="fin-table">
+            <thead><tr id="fin-cf-head"></tr></thead>
+            <tbody id="fin-cf-body"><tr><td colspan="5" style="color:var(--text-muted);padding:20px;text-align:center;">Select a ticker to load financials</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div><!-- end financials -->
+
+  <!-- ANALYST TAB -->
+  <div class="tab-panel" id="tab-analyst">
+    <div class="analyst-controls">
+      <span class="fin-label">TICKER</span>
+      <select class="fin-select" id="analystTicker" onchange="loadAnalyst()">
+        <option value="CORZ">CORZ</option>
+        <option value="CRWV">CRWV</option>
+        <option value="APLD">APLD</option>
+        <option value="VRT">VRT</option>
+        <option value="CIFR">CIFR</option>
+        <option value="WULF">WULF</option>
+        <option value="HUT">HUT</option>
+        <option value="IREN">IREN</option>
+        <option value="MSFT">MSFT</option>
+        <option value="META">META</option>
+        <option value="NVDA">NVDA</option>
+        <option value="AMD">AMD</option>
+        <option value="ETN">ETN</option>
+        <option value="PWR">PWR</option>
+        <option value="HUBB">HUBB</option>
+        <option value="MARA">MARA</option>
+        <option value="RIOT">RIOT</option>
+        <option value="CLSK">CLSK</option>
+        <option value="BITF">BITF</option>
+      </select>
+      <span id="analyst-consensus-wrap" style="margin-left:16px;"></span>
+      <span id="analyst-loading" style="font-size:10px;color:var(--text-muted);margin-left:8px;"></span>
+    </div>
+
+    <!-- Summary row -->
+    <div id="analyst-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;"></div>
+
+    <!-- Price target table -->
+    <div class="fin-block">
+      <div class="fin-block-header">Individual Analyst Price Targets</div>
+      <table class="data-table" style="width:100%;">
+        <thead>
+          <tr>
+            <th style="text-align:left;">Analyst</th>
+            <th style="text-align:left;">Firm</th>
+            <th>Action</th>
+            <th>Rating</th>
+            <th>Change</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="analyst-tbody"></tbody>
+      </table>
+    </div>
+  </div><!-- end analyst -->
+
+</div><!-- end main -->
+
+<script>
+// Yahoo Finance via CORS proxy — no API key needed
+const PROXY = 'https://corsproxy.io/?';
+const YF1 = 'https://query1.finance.yahoo.com';
+const YF2 = 'https://query2.finance.yahoo.com';
+
+async function yfFetch(url) {
+  const r = await fetch(PROXY + encodeURIComponent(url));
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+const GROUPS = {
+  core:     { label: 'Core Position',         tickers: ['CORZ','CRWV','APLD','VRT'] },
+  hpc:      { label: 'AI/HPC Transition',      tickers: ['CIFR','WULF','HUT','IREN'] },
+  demand:   { label: 'Demand Proxies',         tickers: ['MSFT','META','NVDA','AMD'] },
+  buildout: { label: 'Buildout Bottlenecks',   tickers: ['ETN','PWR','HUBB'] },
+  legacy:   { label: 'Legacy Mining Comps',    tickers: ['MARA','RIOT','CLSK','BITF'] },
+};
+const ALL_TICKERS = Object.values(GROUPS).flatMap(g => g.tickers);
+
+const NAMES = {
+  CORZ:'Core Scientific', CRWV:'CoreWeave', APLD:'Applied Digital', VRT:'Vertiv Holdings',
+  CIFR:'Cipher Mining', WULF:'TeraWulf', HUT:'Hut 8 Corp', IREN:'IREN Ltd',
+  MSFT:'Microsoft', META:'Meta Platforms', NVDA:'NVIDIA', AMD:'Advanced Micro Devices',
+  ETN:'Eaton Corp', PWR:'Quanta Services', HUBB:'Hubbell Inc',
+  MARA:'MARA Holdings', RIOT:'Riot Platforms', CLSK:'CleanSpark', BITF:'Bitfarms',
+};
+
+// State
+let quoteData = {};
+let histData = {};
+let priceTargets = {};
+let finPeriod = 'annual';
+
+
+function fmt(n, dec=2) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return Number(n).toLocaleString('en-US', {minimumFractionDigits:dec, maximumFractionDigits:dec});
+}
+function fmtPct(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  const s = (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+  return s;
+}
+function fmtLarge(n) {
+  if (!n) return '—';
+  if (Math.abs(n) >= 1e12) return (n/1e12).toFixed(2) + 'T';
+  if (Math.abs(n) >= 1e9)  return (n/1e9).toFixed(2) + 'B';
+  if (Math.abs(n) >= 1e6)  return (n/1e6).toFixed(2) + 'M';
+  return n.toFixed(0);
+}
+function pctClass(n) {
+  if (!n && n !== 0) return 'neu';
+  return n >= 0 ? 'pos' : 'neg';
+}
+function pctCell(n) {
+  return `<span class="${pctClass(n)}">${fmtPct(n)}</span>`;
+}
+
+// Compute period returns from history
+function computeReturns(hist) {
+  if (!hist || hist.length < 2) return { w1: null, m1: null, ytd: null, y1: null };
+  const sorted = [...hist].sort((a,b) => new Date(b.date) - new Date(a.date));
+  const latest = sorted[0].close;
+  const now = new Date();
+  const ago = (days) => new Date(now - days * 86400000);
+  const find = (target) => {
+    const t = target.getTime();
+    return sorted.find(d => new Date(d.date).getTime() <= t);
+  };
+  const p1w = find(ago(7));
+  const p1m = find(ago(30));
+  const ytdDate = new Date(now.getFullYear(), 0, 1);
+  const pytd = find(ytdDate);
+  const p1y = find(ago(365));
+  return {
+    w1:  p1w  ? (latest/p1w.close  - 1)*100 : null,
+    m1:  p1m  ? (latest/p1m.close  - 1)*100 : null,
+    ytd: pytd ? (latest/pytd.close - 1)*100 : null,
+    y1:  p1y  ? (latest/p1y.close  - 1)*100 : null,
+  };
+}
+
+// Build table header
+function buildHeader(trId) {
+  const tr = document.getElementById(trId);
+  if (!tr) return;
+  tr.innerHTML = `
+    <th>Ticker</th>
+    <th>Name</th>
+    <th>Price</th>
+    <th>Day %</th>
+    <th class="hide-sm">1W %</th>
+    <th class="hide-sm">1M %</th>
+    <th>YTD %</th>
+    <th class="hide-md">1Y %</th>
+    <th class="hide-md">Analyst PT</th>
+    <th class="hide-md">Upside</th>
+    <th class="hide-md">Mkt Cap</th>
+  `;
+}
+
+function renderRow(ticker, tbodyId) {
+  const q = quoteData[ticker];
+  const h = histData[ticker] || [];
+  const ret = computeReturns(h);
+  const pt = priceTargets[ticker];
+  const isCorz = ticker === 'CORZ';
+
+  const price = q ? q.price : null;
+  const dayPct = q ? q.changesPercentage : null;
+  const mktCap = q ? q.marketCap : null;
+  const ptVal = pt ? pt.priceTarget : null;
+  const upside = (ptVal && price) ? (ptVal/price - 1)*100 : null;
+
+  let upsideHtml = '—';
+  if (upside !== null) {
+    const cls = upside >= 0 ? 'upside-pos' : 'upside-neg';
+    upsideHtml = `<span class="${cls}">${fmtPct(upside)}</span>`;
+  }
+
+  const tickerClass = isCorz ? 'ticker-cell corz' : 'ticker-cell';
+  const rowClass = isCorz ? 'corz-row' : '';
+
+  return `<tr class="${rowClass}" onclick="quickSelect('${ticker}')">
+    <td><span class="${tickerClass}">${ticker}</span></td>
+    <td>${NAMES[ticker] || ticker}</td>
+    <td>${price ? '$' + fmt(price) : '<span class="loading-cell">…</span>'}</td>
+    <td>${dayPct !== null ? pctCell(dayPct) : '<span class="loading-cell">…</span>'}</td>
+    <td class="hide-sm">${ret.w1 !== null ? pctCell(ret.w1) : '<span class="loading-cell">…</span>'}</td>
+    <td class="hide-sm">${ret.m1 !== null ? pctCell(ret.m1) : '<span class="loading-cell">…</span>'}</td>
+    <td>${ret.ytd !== null ? pctCell(ret.ytd) : '<span class="loading-cell">…</span>'}</td>
+    <td class="hide-md">${ret.y1 !== null ? pctCell(ret.y1) : '—'}</td>
+    <td class="hide-md">${ptVal ? '<span class="pt-cell">$'+fmt(ptVal)+'</span>' : '—'}</td>
+    <td class="hide-md">${upsideHtml}</td>
+    <td class="hide-md mktcap-cell">${mktCap ? fmtLarge(mktCap) : '—'}</td>
+  </tr>`;
+}
+
+function renderAllTables() {
+  ['core','hpc','demand','buildout','legacy'].forEach(g => {
+    buildHeader('thead-' + g === 'thead-main' ? 'thead-main' : 'thead-' + g);
+  });
+  buildHeader('thead-main');
+  buildHeader('thead-hpc');
+  buildHeader('thead-demand');
+  buildHeader('thead-buildout');
+  buildHeader('thead-legacy');
+
+  const groups = { core:'tbody-core', hpc:'tbody-hpc', demand:'tbody-demand', buildout:'tbody-buildout', legacy:'tbody-legacy' };
+  Object.entries(groups).forEach(([g, tbodyId]) => {
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+    tbody.innerHTML = GROUPS[g].tickers.map(t => renderRow(t, tbodyId)).join('');
+  });
+}
+
+function updateSpotlight() {
+  const q = quoteData['CORZ'];
+  const h = histData['CORZ'] || [];
+  const ret = computeReturns(h);
+  const pt = priceTargets['CORZ'];
+
+  if (q) {
+    document.getElementById('sp-price').textContent = '$' + fmt(q.price);
+    const dc = q.changesPercentage;
+    const el = document.getElementById('sp-change');
+    el.textContent = (dc >= 0 ? '▲' : '▼') + ' ' + Math.abs(dc).toFixed(2) + '%  (' + (dc>=0?'+':'') + fmt(q.change) + ')';
+    el.className = 'spot-change ' + (dc >= 0 ? 'pos' : 'neg');
+    document.getElementById('sp-mktcap').textContent = fmtLarge(q.marketCap);
+    document.getElementById('sp-vol').textContent = fmtLarge(q.volume);
+    const lo = q.yearLow, hi = q.yearHigh, p = q.price;
+    const pct = ((p-lo)/(hi-lo)*100).toFixed(0);
+    document.getElementById('sp-range').innerHTML = `$${fmt(lo,2)} – $${fmt(hi,2)} <span style="font-size:10px;color:var(--text-muted);">(${pct}th%)</span>`;
+  }
+  if (ret.w1 !== null) document.getElementById('sp-1w').innerHTML = pctCell(ret.w1);
+  if (ret.m1 !== null) document.getElementById('sp-1m').innerHTML = pctCell(ret.m1);
+  if (ret.ytd !== null) document.getElementById('sp-ytd').innerHTML = pctCell(ret.ytd);
+  if (ret.y1 !== null) document.getElementById('sp-1y').innerHTML = pctCell(ret.y1);
+
+  if (pt && quoteData['CORZ']) {
+    const price = quoteData['CORZ'].price;
+    const upside = (pt.priceTarget/price - 1)*100;
+    document.getElementById('sp-pt-label').textContent = `Analyst PT: $${fmt(pt.priceTarget)}`;
+    document.getElementById('sp-upside').textContent = (upside>=0?'+':'') + upside.toFixed(1) + '% upside';
+    document.getElementById('sp-upside').className = 'spot-upside ' + (upside>=0?'pos':'neg');
+    if (pt.consensus) {
+      const c = pt.consensus.toLowerCase();
+      document.getElementById('sp-consensus').textContent = pt.consensus.toUpperCase() + ' · ' + (pt.numAnalysts||'') + ' analysts';
+    }
+  }
+}
+
+// ---- FETCH (Yahoo Finance) ----
+async function fetchQuotes() {
+  // Yahoo v7 batch quote
+  const symbols = ALL_TICKERS.join(',');
+  try {
+    const url = `${YF1}/v7/finance/quote?symbols=${symbols}&lang=en-US&region=US`;
+    const data = await yfFetch(url);
+    const quotes = data?.quoteResponse?.result || [];
+    quotes.forEach(q => {
+      quoteData[q.symbol] = {
+        symbol: q.symbol,
+        price: q.regularMarketPrice,
+        change: q.regularMarketChange,
+        changesPercentage: q.regularMarketChangePercent,
+        marketCap: q.marketCap,
+        volume: q.regularMarketVolume,
+        yearHigh: q.fiftyTwoWeekHigh,
+        yearLow: q.fiftyTwoWeekLow,
+      };
+    });
+  } catch(e) { console.warn('Quote fetch error', e); }
+}
+
+async function fetchHistorical(ticker) {
+  try {
+    const url = `${YF1}/v8/finance/chart/${ticker}?interval=1d&range=1y`;
+    const data = await yfFetch(url);
+    const chart = data?.chart?.result?.[0];
+    if (!chart) return;
+    const timestamps = chart.timestamp || [];
+    const closes = chart.indicators?.quote?.[0]?.close || [];
+    histData[ticker] = timestamps.map((t, i) => ({
+      date: new Date(t * 1000).toISOString().slice(0,10),
+      close: closes[i],
+    })).filter(d => d.close != null);
+  } catch(e) { console.warn(`Hist error ${ticker}`, e); }
+}
+
+async function fetchPriceTargetConsensus(ticker) {
+  // Yahoo Finance quoteSummary financialData module has analyst targets
+  try {
+    const url = `${YF2}/v10/finance/quoteSummary/${ticker}?modules=financialData`;
+    const data = await yfFetch(url);
+    const fd = data?.quoteSummary?.result?.[0]?.financialData;
+    if (fd) {
+      priceTargets[ticker] = {
+        priceTarget: fd.targetMeanPrice?.raw,
+        targetHigh: fd.targetHighPrice?.raw,
+        targetLow: fd.targetLowPrice?.raw,
+        targetMedian: fd.targetMedianPrice?.raw,
+        consensus: fd.recommendationKey,
+        numAnalysts: fd.numberOfAnalystOpinions?.raw,
+      };
+    }
+  } catch(e) { console.warn(`PT error ${ticker}`, e); }
+}
+
+// ---- MAIN LOAD ----
+async function refreshAll() {
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+  document.getElementById('loadingSub').textContent = 'Fetching quotes…';
+  document.getElementById('lastUpdated').textContent = '↻ Refreshing…';
+
+  await fetchQuotes();
+  document.getElementById('loadingSub').textContent = 'Loading historical data…';
+
+  // Fetch historical in parallel
+  await Promise.all(ALL_TICKERS.map(t => fetchHistorical(t)));
+  document.getElementById('loadingSub').textContent = 'Loading analyst targets…';
+
+  // Fetch price targets
+  await Promise.all(ALL_TICKERS.map(t => fetchPriceTargetConsensus(t)));
+
+  renderAllTables();
+  updateSpotlight();
+
+  const now = new Date();
+  document.getElementById('lastUpdated').textContent = 'Updated ' + now.toLocaleTimeString();
+  document.getElementById('loadingOverlay').classList.add('hidden');
+}
+
+// ---- FINANCIALS (Yahoo Finance) ----
+async function loadFinancials() {
+  const ticker = document.getElementById('finTicker').value;
+  const isQuarterly = finPeriod === 'quarter';
+  document.getElementById('fin-loading').textContent = 'Loading…';
+
+  const modules = isQuarterly
+    ? 'incomeStatementHistoryQuarterly,balanceSheetHistoryQuarterly,cashflowStatementHistoryQuarterly'
+    : 'incomeStatementHistory,balanceSheetHistory,cashflowStatementHistory';
+
+  try {
+    const url = `${YF2}/v10/finance/quoteSummary/${ticker}?modules=${modules}`;
+    const data = await yfFetch(url);
+    const res = data?.quoteSummary?.result?.[0];
+    if (!res) throw new Error('No data');
+
+    const incKey = isQuarterly ? 'incomeStatementHistoryQuarterly' : 'incomeStatementHistory';
+    const balKey = isQuarterly ? 'balanceSheetHistoryQuarterly'    : 'balanceSheetHistory';
+    const cfKey  = isQuarterly ? 'cashflowStatementHistoryQuarterly': 'cashflowStatementHistory';
+
+    const income  = (res[incKey]?.incomeStatementHistory  || []).map(flattenYF);
+    const balance = (res[balKey]?.balanceSheetStatements  || []).map(flattenYF);
+    const cf      = (res[cfKey]?.cashflowStatements       || []).map(flattenYF);
+
+    renderIncome(income);
+    renderBalance(balance);
+    renderCF(cf);
+    document.getElementById('fin-loading').textContent = '';
+  } catch(e) {
+    document.getElementById('fin-loading').textContent = 'Error: ' + e.message;
+    console.error(e);
+  }
+}
+
+// Yahoo Finance wraps each value as {raw, fmt} — flatten to raw numbers
+function flattenYF(obj) {
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) {
+    out[k] = (v && typeof v === 'object' && 'raw' in v) ? v.raw : v;
+  }
+  // Map Yahoo field names to our renderer's expected names
+  out.revenue           = out.totalRevenue;
+  out.costOfRevenue     = out.costOfRevenue;
+  out.grossProfit       = out.grossProfit;
+  out.grossProfitRatio  = (out.grossProfit && out.totalRevenue) ? out.grossProfit / out.totalRevenue : null;
+  out.operatingExpenses = out.totalOperatingExpenses;
+  out.operatingIncome   = out.operatingIncome || out.ebit;
+  out.ebitda            = out.ebitda;
+  out.netIncome         = out.netIncome;
+  out.netIncomeRatio    = (out.netIncome && out.totalRevenue) ? out.netIncome / out.totalRevenue : null;
+  out.eps               = out.basicEps;
+  out.epsdiluted        = out.dilutedEps;
+  out.depreciationAndAmortization = out.depreciation || out.depreciationAndAmortization;
+  out.interestExpense   = out.interestExpense;
+  // Balance sheet mappings
+  out.cashAndCashEquivalents  = out.cash;
+  out.shortTermInvestments    = out.shortTermInvestments;
+  out.totalCurrentAssets      = out.totalCurrentAssets;
+  out.propertyPlantEquipmentNet = out.propertyPlantAndEquipmentGross || out.netPpe;
+  out.totalAssets             = out.totalAssets;
+  out.totalCurrentLiabilities = out.totalCurrentLiabilities;
+  out.longTermDebt            = out.longTermDebt;
+  out.totalDebt               = out.totalDebt || (out.longTermDebt || 0) + (out.shortLongTermDebt || 0);
+  out.totalLiabilities        = out.totalLiab;
+  out.totalStockholdersEquity = out.totalStockholderEquity;
+  // Cash flow mappings
+  out.operatingCashFlow           = out.totalCashFromOperatingActivities;
+  out.capitalExpenditure          = out.capitalExpenditures;
+  out.acquisitionsNet             = out.acquisitions;
+  out.netCashUsedForInvestingActivites = out.totalCashflowsFromInvestingActivities;
+  out.repaymentOfDebt             = out.repaymentOfDebt || out.longTermDebtRepayment;
+  out.commonStockIssued           = out.issuanceOfStock;
+  out.netCashUsedProvidedByFinancingActivities = out.totalCashFromFinancingActivities;
+  out.freeCashFlow                = (out.totalCashFromOperatingActivities && out.capitalExpenditures)
+                                      ? out.totalCashFromOperatingActivities + out.capitalExpenditures : null;
+  out.netChangeInCash             = out.changeInCash;
+  // Date label
+  const d = out.endDate?.fmt || out.endDate;
+  out.period = d ? d.slice(0,7) : '—';
+  return out;
+}
+
+function finHeaders(data, headId) {
+  const head = document.getElementById(headId);
+  if (!head || !data || !data.length) return;
+  head.innerHTML = '<th style="text-align:left;">Metric</th>' +
+    data.slice(0,5).map(d => `<th>${d.period || d.date?.slice(0,7) || d.date?.slice(0,4)}</th>`).join('');
+}
+
+function finRow(label, data, field, formatter, isBold=false) {
+  const cls = isBold ? ' class="fin-row-bold"' : '';
+  const cells = data.slice(0,5).map(d => {
+    const v = d[field];
+    return `<td>${v !== undefined && v !== null ? formatter(v) : '—'}</td>`;
+  }).join('');
+  return `<tr${cls}><td>${label}</td>${cells}</tr>`;
+}
+
+function finSectionHeader(label) {
+  return `<tr class="fin-section-header"><td colspan="6">${label}</td></tr>`;
+}
+
+function renderIncome(data) {
+  if (!data || !data.length) { document.getElementById('fin-income-body').innerHTML = '<tr><td colspan="6" style="color:var(--text-muted);padding:12px;">No data</td></tr>'; return; }
+  finHeaders(data, 'fin-income-head');
+  const f = v => (v>=0?'':'-') + '$' + fmtLarge(Math.abs(v));
+  document.getElementById('fin-income-body').innerHTML =
+    finSectionHeader('Revenue') +
+    finRow('Revenue', data, 'revenue', f, true) +
+    finRow('Cost of Revenue', data, 'costOfRevenue', f) +
+    finRow('Gross Profit', data, 'grossProfit', f, true) +
+    finRow('Gross Margin', data, 'grossProfitRatio', v => (v*100).toFixed(1)+'%') +
+    finSectionHeader('Expenses & Income') +
+    finRow('Operating Expenses', data, 'operatingExpenses', f) +
+    finRow('Operating Income', data, 'operatingIncome', f, true) +
+    finRow('EBITDA', data, 'ebitda', f, true) +
+    finRow('Net Income', data, 'netIncome', f, true) +
+    finRow('Net Margin', data, 'netIncomeRatio', v => (v*100).toFixed(1)+'%') +
+    finSectionHeader('Per Share') +
+    finRow('EPS (Basic)', data, 'eps', v => '$'+fmt(v)) +
+    finRow('EPS (Diluted)', data, 'epsdiluted', v => '$'+fmt(v)) +
+    finRow('D&A', data, 'depreciationAndAmortization', f) +
+    finRow('Interest Expense', data, 'interestExpense', f);
+}
+
+function renderBalance(data) {
+  if (!data || !data.length) { document.getElementById('fin-balance-body').innerHTML = '<tr><td colspan="6" style="color:var(--text-muted);padding:12px;">No data</td></tr>'; return; }
+  finHeaders(data, 'fin-balance-head');
+  const f = v => (v>=0?'':'-') + '$' + fmtLarge(Math.abs(v));
+  document.getElementById('fin-balance-body').innerHTML =
+    finSectionHeader('Assets') +
+    finRow('Cash & Equivalents', data, 'cashAndCashEquivalents', f, true) +
+    finRow('Short-Term Investments', data, 'shortTermInvestments', f) +
+    finRow('Total Current Assets', data, 'totalCurrentAssets', f) +
+    finRow('PP&E', data, 'propertyPlantEquipmentNet', f) +
+    finRow('Total Assets', data, 'totalAssets', f, true) +
+    finSectionHeader('Liabilities & Equity') +
+    finRow('Total Current Liabilities', data, 'totalCurrentLiabilities', f) +
+    finRow('Long-Term Debt', data, 'longTermDebt', f, true) +
+    finRow('Total Debt', data, 'totalDebt', f) +
+    finRow('Total Liabilities', data, 'totalLiabilities', f) +
+    finRow('Shareholders\' Equity', data, 'totalStockholdersEquity', f, true) +
+    finSectionHeader('Ratios') +
+    finRow('Debt / Equity', data, 'totalDebt', (v,i) => {
+      const eq = data[0].totalStockholdersEquity; return eq ? fmt(v/eq,2)+'x' : '—';
+    });
+}
+
+function renderCF(data) {
+  if (!data || !data.length) { document.getElementById('fin-cf-body').innerHTML = '<tr><td colspan="6" style="color:var(--text-muted);padding:12px;">No data</td></tr>'; return; }
+  finHeaders(data, 'fin-cf-head');
+  const f = v => (v>=0?'':'-') + '$' + fmtLarge(Math.abs(v));
+  document.getElementById('fin-cf-body').innerHTML =
+    finSectionHeader('Operating') +
+    finRow('Net Income', data, 'netIncome', f) +
+    finRow('D&A', data, 'depreciationAndAmortization', f) +
+    finRow('Operating Cash Flow', data, 'operatingCashFlow', f, true) +
+    finSectionHeader('Investing') +
+    finRow('Capital Expenditures', data, 'capitalExpenditure', f, true) +
+    finRow('Acquisitions', data, 'acquisitionsNet', f) +
+    finRow('Investing Cash Flow', data, 'netCashUsedForInvestingActivites', f) +
+    finSectionHeader('Financing') +
+    finRow('Debt Repayment', data, 'repaymentOfDebt', f) +
+    finRow('Stock Issuance', data, 'commonStockIssued', f) +
+    finRow('Financing Cash Flow', data, 'netCashUsedProvidedByFinancingActivities', f) +
+    finSectionHeader('Summary') +
+    finRow('Free Cash Flow', data, 'freeCashFlow', f, true) +
+    finRow('Net Change in Cash', data, 'netChangeInCash', f);
+}
+
+function setPeriod(p) {
+  finPeriod = p;
+  document.getElementById('btn-annual').classList.toggle('active', p === 'annual');
+  document.getElementById('btn-quarter').classList.toggle('active', p === 'quarter');
+  loadFinancials();
+}
+
+// ---- ANALYST (Yahoo Finance) ----
+async function loadAnalyst() {
+  const ticker = document.getElementById('analystTicker').value;
+  document.getElementById('analyst-loading').textContent = 'Loading…';
+  document.getElementById('analyst-consensus-wrap').innerHTML = '';
+
+  try {
+    const url = `${YF2}/v10/finance/quoteSummary/${ticker}?modules=financialData,recommendationTrend,upgradeDowngradeHistory`;
+    const data = await yfFetch(url);
+    const res = data?.quoteSummary?.result?.[0];
+    const fd = res?.financialData || {};
+    const upgrades = res?.upgradeDowngradeHistory?.history || [];
+
+    const price = quoteData[ticker]?.price;
+    const ptMean   = fd.targetMeanPrice?.raw;
+    const ptHigh   = fd.targetHighPrice?.raw;
+    const ptLow    = fd.targetLowPrice?.raw;
+    const ptMedian = fd.targetMedianPrice?.raw;
+    const numAn    = fd.numberOfAnalystOpinions?.raw;
+    const recKey   = fd.recommendationKey;
+
+    // Summary cards
+    const upside = (ptMean && price) ? (ptMean/price - 1)*100 : null;
+    const cards = [
+      { label: 'Consensus PT',  val: ptMean   ? '$'+fmt(ptMean)   : '—', sub: `${numAn||'?'} analysts` },
+      { label: 'PT High',       val: ptHigh   ? '$'+fmt(ptHigh)   : '—', sub: 'bull case' },
+      { label: 'PT Low',        val: ptLow    ? '$'+fmt(ptLow)    : '—', sub: 'bear case' },
+      { label: 'Upside to PT',  val: upside !== null ? fmtPct(upside) : '—',
+        sub: 'vs current price', cls: upside !== null ? pctClass(upside) : '' },
+    ];
+    document.getElementById('analyst-summary').innerHTML = cards.map(c => `
+      <div style="background:var(--bg1);border:1px solid var(--border);padding:14px 16px;">
+        <div style="font-size:9px;letter-spacing:0.15em;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">${c.label}</div>
+        <div style="font-size:20px;font-weight:700;" class="${c.cls||''}">${c.val}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${c.sub}</div>
+      </div>
+    `).join('');
+
+    // Consensus badge
+    if (recKey) {
+      const isBuy  = recKey.includes('buy');
+      const isSell = recKey.includes('sell');
+      const cls    = isBuy ? 'consensus-buy' : isSell ? 'consensus-sell' : 'consensus-hold';
+      document.getElementById('analyst-consensus-wrap').innerHTML =
+        `<span class="consensus-badge ${cls}">${recKey.toUpperCase().replace('-',' ')}</span>`;
+    }
+
+    // Upgrade/downgrade history table
+    const tbody = document.getElementById('analyst-tbody');
+    if (!upgrades.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text-muted);padding:16px;text-align:center;">No analyst history available</td></tr>';
+    } else {
+      tbody.innerHTML = upgrades.slice(0,25).map(u => {
+        const action = u.action || '';
+        const rating = u.toGrade || u.fromGrade || '—';
+        const rColor = rating.toLowerCase().includes('buy')  ? 'var(--green)'
+                     : rating.toLowerCase().includes('sell') ? 'var(--red)'
+                     : 'var(--amber)';
+        const actionColor = action === 'up' ? 'var(--green)' : action === 'down' ? 'var(--red)' : 'var(--text-dim)';
+        const actionLabel = action === 'up' ? '▲ Upgrade' : action === 'down' ? '▼ Downgrade' : action === 'init' ? '● Initiate' : action;
+        const dateStr = u.epochGradeDate ? new Date(u.epochGradeDate*1000).toISOString().slice(0,10) : '—';
+        return `<tr>
+          <td style="text-align:left;">—</td>
+          <td style="text-align:left;color:var(--text-dim);">${u.firm || '—'}</td>
+          <td><span style="color:${actionColor};font-size:11px;">${actionLabel}</span></td>
+          <td><span style="color:${rColor};font-weight:600;">${rating}</span></td>
+          <td style="color:var(--text-muted);font-size:11px;">${u.fromGrade ? u.fromGrade + ' → ' + u.toGrade : u.toGrade || '—'}</td>
+          <td style="color:var(--text-muted);">${dateStr}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    document.getElementById('analyst-loading').textContent = '';
+  } catch(e) {
+    document.getElementById('analyst-loading').textContent = 'Error: ' + e.message;
+    console.error(e);
+  }
+}
+
+// ---- TABS ----
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  const tabMap = { overview: 0, financials: 1, analyst: 2 };
+  document.querySelectorAll('.tab')[tabMap[name]].classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+
+  if (name === 'financials') loadFinancials();
+  if (name === 'analyst') loadAnalyst();
+}
+
+function quickSelect(ticker) {
+  document.getElementById('finTicker').value = ticker;
+  document.getElementById('analystTicker').value = ticker;
+}
+
+// ---- INIT ----
+refreshAll();
+</script>
+</body>
+</html>
