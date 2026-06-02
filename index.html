@@ -1,1149 +1,1472 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CORZ Investment Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CORZ Valuation Model — Two-Case Framework</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=DM+Sans:opsz,wght@9..40,300..700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #080b0f;
-    --bg1: #0e1318;
-    --bg2: #131920;
-    --bg3: #1a2330;
-    --border: #1e2d3d;
-    --border2: #253545;
-    --text: #c8d8e8;
-    --text-dim: #5a7a9a;
-    --text-muted: #3a5470;
-    --green: #00e5a0;
-    --green-dim: #00b37a;
-    --red: #ff4d6d;
-    --red-dim: #cc2244;
-    --amber: #ffd166;
-    --blue: #4fc3f7;
-    --blue-dim: #0288d1;
-    --corz: #00e5a0;
-    --accent: #1de9b6;
-    --glow: 0 0 20px rgba(0,229,160,0.15);
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    line-height: 1.5;
-    min-height: 100vh;
-  }
+:root {
+  --paper: #f5f1e8;
+  --paper-deep: #ece6d7;
+  --ink: #1c1a17;
+  --ink-soft: #4a443c;
+  --ink-muted: #847d72;
+  --rule: #d9d3c7;
+  --rule-soft: #e5e0d3;
+  --accent-base: #1f4e5f;
+  --accent-up: #b8521c;
+  --accent: var(--accent-base);
+  --pos: #2d5016;
+  --neg: #8b2c1c;
+  --sans: 'DM Sans', system-ui, sans-serif;
+  --serif: 'Fraunces', Georgia, serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+html[data-scenario="upside"] { --accent: var(--accent-up); }
 
-  /* HEADER */
-  .header {
-    background: var(--bg1);
-    border-bottom: 1px solid var(--border);
-    padding: 14px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-  .header-left { display: flex; align-items: center; gap: 20px; }
-  .logo { font-size: 15px; font-weight: 700; letter-spacing: 0.15em; color: var(--corz); }
-  .logo span { color: var(--text-dim); font-weight: 300; }
-  .header-meta { font-size: 10px; color: var(--text-dim); letter-spacing: 0.05em; }
-  .header-right { display: flex; align-items: center; gap: 12px; }
-  .refresh-btn {
-    background: var(--bg3);
-    border: 1px solid var(--border2);
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    padding: 5px 12px;
-    cursor: pointer;
-    letter-spacing: 0.08em;
-    transition: all 0.15s;
-  }
-  .refresh-btn:hover { border-color: var(--green); color: var(--green); }
-  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(at 20% 0%, rgba(184,82,28,0.04) 0, transparent 50%),
+    radial-gradient(at 80% 100%, rgba(31,78,95,0.04) 0, transparent 50%);
+}
+html[data-scenario="upside"] body {
+  background-image:
+    radial-gradient(at 20% 0%, rgba(184,82,28,0.10) 0, transparent 50%),
+    radial-gradient(at 80% 100%, rgba(184,82,28,0.04) 0, transparent 50%);
+}
 
-  /* SPOTLIGHT */
-  .spotlight {
-    background: linear-gradient(135deg, #0a1520 0%, #0d1f2d 50%, #091520 100%);
-    border-bottom: 1px solid var(--border);
-    padding: 16px 24px;
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    gap: 32px;
-    align-items: center;
-  }
-  .spot-main { display: flex; align-items: baseline; gap: 16px; }
-  .spot-ticker { font-size: 28px; font-weight: 700; color: var(--corz); letter-spacing: 0.1em; text-shadow: var(--glow); }
-  .spot-name { font-size: 11px; color: var(--text-dim); letter-spacing: 0.08em; }
-  .spot-price { font-size: 26px; font-weight: 600; color: var(--text); }
-  .spot-change { font-size: 14px; font-weight: 500; }
-  .spot-stats { display: flex; gap: 32px; }
-  .spot-stat { text-align: center; }
-  .spot-stat-label { font-size: 9px; color: var(--text-muted); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 3px; }
-  .spot-stat-val { font-size: 13px; font-weight: 600; }
-  .spot-right { text-align: right; }
-  .spot-pt { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
-  .spot-upside { font-size: 18px; font-weight: 700; color: var(--green); }
+.shell { max-width: 1240px; margin: 0 auto; padding: 32px 40px 80px; }
 
-  /* TABS */
-  .tabs {
-    background: var(--bg1);
-    border-bottom: 1px solid var(--border);
-    padding: 0 24px;
-    display: flex;
-    gap: 0;
-  }
-  .tab {
-    padding: 10px 20px;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: all 0.15s;
-  }
-  .tab:hover { color: var(--text); }
-  .tab.active { color: var(--corz); border-bottom-color: var(--corz); }
+/* ─────── Masthead ─────── */
+.masthead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 32px;
+  gap: 24px;
+}
+.brand .eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--ink-muted);
+  margin-bottom: 6px;
+}
+.brand h1 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-variation-settings: "opsz" 96, "SOFT" 30, "WONK" 0;
+  font-size: 38px;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.brand h1 em {
+  font-style: italic;
+  font-variation-settings: "opsz" 96, "SOFT" 100, "WONK" 1;
+  color: var(--accent);
+  transition: color .3s ease;
+}
+.meta {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-align: right;
+  color: var(--ink-muted);
+  line-height: 1.6;
+}
+.meta b { color: var(--ink); font-weight: 500; }
+.meta .ver-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
 
-  /* MAIN */
-  .main { padding: 20px 24px; }
-  .tab-panel { display: none; }
-  .tab-panel.active { display: block; }
+/* ─────── Scenario toggle ─────── */
+.scenario-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 28px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+}
+.scenario-btn {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--ink);
+  padding: 14px 20px;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--sans);
+  color: var(--ink);
+  transition: background .2s ease;
+}
+.scenario-btn:last-child { border-right: 0; }
+.scenario-btn:hover:not(.active) { background: var(--paper-deep); }
+.scenario-btn.active { background: var(--ink); color: var(--paper); }
+.scenario-btn .sb-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  display: block;
+  margin-bottom: 4px;
+}
+.scenario-btn .sb-title {
+  font-family: var(--serif);
+  font-variation-settings: "opsz" 48, "SOFT" 30;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.2;
+  display: block;
+  letter-spacing: -0.005em;
+}
+.scenario-btn .sb-sub {
+  font-size: 12px;
+  opacity: 0.75;
+  display: block;
+}
 
-  /* SECTION */
-  .section { margin-bottom: 24px; }
-  .section-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 8px;
-  }
-  .section-label {
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    padding: 2px 8px;
-    border: 1px solid var(--border);
-    background: var(--bg2);
-  }
-  .section-line { flex: 1; height: 1px; background: var(--border); }
+/* ─────── Main grid ─────── */
+.layout {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 36px;
+}
+@media (max-width: 940px) {
+  .layout { grid-template-columns: 1fr; }
+  .shell { padding: 24px 20px 60px; }
+}
 
-  /* TABLE */
-  .data-table { width: 100%; border-collapse: collapse; }
-  .data-table thead tr { border-bottom: 1px solid var(--border2); }
-  .data-table th {
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    text-align: right;
-    padding: 6px 10px;
-    white-space: nowrap;
-  }
-  .data-table th:first-child, .data-table th:nth-child(2) { text-align: left; }
-  .data-table tbody tr {
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    transition: background 0.1s;
-  }
-  .data-table tbody tr:hover { background: var(--bg2); }
-  .data-table tbody tr.corz-row { background: rgba(0,229,160,0.04); border-left: 2px solid var(--corz); }
-  .data-table tbody tr.corz-row:hover { background: rgba(0,229,160,0.08); }
-  .data-table td {
-    padding: 8px 10px;
-    text-align: right;
-    white-space: nowrap;
-    font-size: 12px;
-  }
-  .data-table td:first-child { text-align: left; }
-  .data-table td:nth-child(2) { text-align: left; color: var(--text-dim); font-size: 11px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
-  .ticker-cell { font-weight: 700; letter-spacing: 0.08em; font-size: 13px; color: var(--text); }
-  .ticker-cell.corz { color: var(--corz); text-shadow: 0 0 10px rgba(0,229,160,0.3); }
-  .pos { color: var(--green); }
-  .neg { color: var(--red); }
-  .neu { color: var(--text-dim); }
-  .loading-cell { color: var(--text-muted); font-size: 11px; }
-  .pt-cell { color: var(--amber); }
-  .upside-pos { color: var(--green); font-weight: 600; }
-  .upside-neg { color: var(--red); font-weight: 600; }
-  .mktcap-cell { color: var(--text-dim); font-size: 11px; }
+/* ─────── Hero output ─────── */
+.hero {
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  padding: 28px 32px 26px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--accent);
+  transition: background .3s ease;
+}
+.hero .label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 10px;
+}
+.hero .big-number {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-variation-settings: "opsz" 144, "SOFT" 0, "WONK" 1;
+  font-size: 96px;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.hero .big-number .dollar {
+  font-size: 56px;
+  color: var(--accent);
+  transition: color .3s ease;
+  font-variation-settings: "opsz" 144, "SOFT" 100, "WONK" 0;
+  font-style: italic;
+}
+.hero .sub {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-top: 10px;
+}
+.hero .sub b { color: var(--ink); font-weight: 500; }
+.hero .delta {
+  position: absolute;
+  right: 28px;
+  top: 28px;
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  opacity: 0;
+  transition: opacity .3s ease;
+}
+html[data-scenario="upside"] .hero .delta { opacity: 1; }
+.hero .delta b {
+  display: block;
+  font-family: var(--serif);
+  font-variation-settings: "opsz" 48, "SOFT" 30, "WONK" 1;
+  font-style: italic;
+  font-size: 22px;
+  color: var(--accent-up);
+  font-weight: 400;
+  margin-top: 2px;
+}
 
-  /* MINI SPARKBAR */
-  .bar-container { display: inline-flex; align-items: center; gap: 4px; }
-  .bar { height: 2px; border-radius: 1px; min-width: 2px; }
+/* ─────── Decomposition table ─────── */
+.decomp {
+  margin-top: 20px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+}
+.decomp h3 {
+  font-family: var(--serif);
+  font-variation-settings: "opsz" 24, "SOFT" 30;
+  font-weight: 500;
+  font-size: 16px;
+  margin: 0;
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.decomp h3 .right {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  font-weight: 400;
+}
+.decomp table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.decomp td {
+  padding: 9px 20px;
+  border-bottom: 1px dashed var(--rule-soft);
+  vertical-align: baseline;
+}
+.decomp tr:last-child td { border-bottom: 0; }
+.decomp .row-name {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink);
+}
+.decomp .row-name .hint {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  margin-top: 1px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.decomp .col-val {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.decomp .col-dollars {
+  text-align: right;
+  width: 130px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.decomp .col-delta {
+  text-align: right;
+  width: 80px;
+  font-size: 10px;
+  color: var(--ink-muted);
+  opacity: 0;
+  transition: opacity .3s ease;
+}
+html[data-scenario="upside"] .decomp .col-delta { opacity: 1; }
+.decomp tr.total td {
+  border-top: 2px solid var(--ink);
+  border-bottom: 0;
+  padding-top: 14px;
+  padding-bottom: 14px;
+  background: var(--paper-deep);
+}
+.decomp tr.total .row-name { font-weight: 700; font-size: 14px; }
+.decomp tr.total .col-dollars {
+  font-family: var(--serif);
+  font-variation-settings: "opsz" 24, "SOFT" 30, "WONK" 1;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 18px;
+  color: var(--accent);
+}
+.pos { color: var(--pos); }
+.neg { color: var(--neg); }
 
-  /* FINANCIALS */
-  .fin-controls {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 20px;
-    padding: 12px 16px;
-    background: var(--bg2);
-    border: 1px solid var(--border);
-  }
-  .fin-label { font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; }
-  .fin-select {
-    background: var(--bg3);
-    border: 1px solid var(--border2);
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    padding: 4px 10px;
-    cursor: pointer;
-  }
-  .fin-select option { background: var(--bg1); }
-  .period-toggle { display: flex; gap: 0; }
-  .period-btn {
-    background: var(--bg3);
-    border: 1px solid var(--border2);
-    color: var(--text-dim);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    padding: 4px 12px;
-    cursor: pointer;
-    letter-spacing: 0.08em;
-    transition: all 0.1s;
-  }
-  .period-btn:first-child { border-right: none; }
-  .period-btn.active { background: var(--bg2); color: var(--corz); border-color: var(--corz); }
+/* ─────── Controls panel ─────── */
+.controls { display: flex; flex-direction: column; gap: 18px; }
+.panel {
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  padding: 18px 20px 20px;
+}
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.panel-head h2 {
+  font-family: var(--serif);
+  font-variation-settings: "opsz" 24, "SOFT" 30;
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+  color: var(--ink);
+}
+.panel-head .tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.panel-note {
+  font-size: 11px;
+  color: var(--ink-muted);
+  font-style: italic;
+  margin: -4px 0 14px;
+  line-height: 1.45;
+}
 
-  .fin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  .fin-block { background: var(--bg1); border: 1px solid var(--border); }
-  .fin-block-header {
-    padding: 10px 16px;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    border-bottom: 1px solid var(--border);
-    background: var(--bg2);
-  }
-  .fin-table { width: 100%; border-collapse: collapse; }
-  .fin-table th {
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    color: var(--text-muted);
-    text-align: right;
-    padding: 6px 12px;
-    border-bottom: 1px solid var(--border);
-  }
-  .fin-table th:first-child { text-align: left; }
-  .fin-table td {
-    padding: 7px 12px;
-    text-align: right;
-    font-size: 11px;
-    border-bottom: 1px solid rgba(30,45,61,0.5);
-  }
-  .fin-table td:first-child { text-align: left; color: var(--text-dim); font-size: 11px; }
-  .fin-table tbody tr:hover { background: var(--bg2); }
-  .fin-row-bold td { font-weight: 600; color: var(--text); }
-  .fin-section-header td {
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    padding: 10px 12px 4px;
-    background: var(--bg2);
-  }
+/* ─────── Slider ─────── */
+.slider-row { margin-bottom: 14px; }
+.slider-row:last-child { margin-bottom: 0; }
+.slider-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+  gap: 8px;
+}
+.slider-meta .lbl {
+  font-size: 12px;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+.slider-meta .lbl .hint {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  font-weight: 400;
+  margin-left: 4px;
+}
+.slider-meta .val {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  transition: color .3s ease;
+}
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--rule);
+  outline: none;
+  border-radius: 0;
+  margin: 0;
+  padding: 0;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--accent);
+  border: 2px solid var(--paper);
+  box-shadow: 0 0 0 1px var(--ink);
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background .3s ease, transform .12s ease;
+}
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--accent);
+  border: 2px solid var(--paper);
+  box-shadow: 0 0 0 1px var(--ink);
+  cursor: pointer;
+  border-radius: 50%;
+}
+.slider-range {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 3px;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ink-muted);
+  letter-spacing: 0.05em;
+}
+.slider-default {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  margin-top: 2px;
+}
+.slider-default.modified {
+  color: var(--accent);
+  font-weight: 500;
+}
 
-  /* ANALYST */
-  .analyst-controls {
-    display: flex; align-items: center; gap: 16px; margin-bottom: 20px;
-    padding: 12px 16px; background: var(--bg2); border: 1px solid var(--border);
-  }
-  .consensus-badge {
-    display: inline-block; padding: 2px 10px;
-    font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
-    border: 1px solid;
-  }
-  .consensus-buy { color: var(--green); border-color: var(--green); background: rgba(0,229,160,0.08); }
-  .consensus-hold { color: var(--amber); border-color: var(--amber); background: rgba(255,209,102,0.08); }
-  .consensus-sell { color: var(--red); border-color: var(--red); background: rgba(255,77,109,0.08); }
+/* ─────── Reset button ─────── */
+.reset-btn {
+  background: transparent;
+  border: 1px solid var(--ink-muted);
+  color: var(--ink-muted);
+  padding: 4px 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+.reset-btn:hover {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
 
-  /* LOADING */
-  .loading-overlay {
-    position: fixed; inset: 0; background: var(--bg);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    z-index: 1000; transition: opacity 0.4s;
-  }
-  .loading-overlay.hidden { opacity: 0; pointer-events: none; }
-  .loading-title { font-size: 14px; font-weight: 700; letter-spacing: 0.2em; color: var(--corz); margin-bottom: 12px; }
-  .loading-bar { width: 240px; height: 2px; background: var(--bg3); overflow: hidden; }
-  .loading-progress { height: 100%; background: var(--corz); animation: load 2s ease forwards; }
-  @keyframes load { from{width:0%} to{width:100%} }
-  .loading-sub { font-size: 10px; color: var(--text-dim); margin-top: 10px; letter-spacing: 0.1em; }
+/* ─────── Constants panel ─────── */
+.constants {
+  margin-top: 20px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  padding: 18px 20px;
+}
+.constants .panel-head { margin-bottom: 10px; padding-bottom: 8px; }
+.constants table {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 11px;
+  border-collapse: collapse;
+}
+.constants td {
+  padding: 4px 0;
+  vertical-align: baseline;
+}
+.constants td:first-child { color: var(--ink-soft); }
+.constants td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.constants td .src {
+  font-size: 9px;
+  color: var(--ink-muted);
+  display: block;
+  margin-top: 0;
+  letter-spacing: 0.03em;
+}
 
-  /* SCROLLBAR */
-  ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: var(--bg1); }
-  ::-webkit-scrollbar-thumb { background: var(--border2); }
+/* ─────── Formula footnote ─────── */
+.formula {
+  margin-top: 28px;
+  padding: 16px 20px;
+  background: var(--paper-deep);
+  border-left: 3px solid var(--accent);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+  line-height: 1.7;
+  transition: border-color .3s ease;
+}
+.formula b { color: var(--ink); font-weight: 700; }
+.formula .arrow { color: var(--accent); transition: color .3s ease; }
 
-  /* RESPONSIVE column hide */
-  @media (max-width: 1100px) { .hide-md { display: none; } }
-  @media (max-width: 800px) { .hide-sm { display: none; } .fin-grid { grid-template-columns: 1fr; } }
+/* ─────── Footer ─────── */
+.footer {
+  margin-top: 40px;
+  padding-top: 18px;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  letter-spacing: 0.05em;
+}
+.footer .disc {
+  font-style: italic;
+  font-family: var(--sans);
+  font-size: 11px;
+  max-width: 60%;
+}
 
-  .vol-chip {
-    font-size: 9px; padding: 1px 5px; border-radius: 2px;
-    display: inline-block; vertical-align: middle;
-  }
-  .vol-h { background: rgba(255,77,109,0.15); color: var(--red); }
-  .vol-m { background: rgba(255,209,102,0.12); color: var(--amber); }
-  .vol-l { background: rgba(0,229,160,0.1); color: var(--green); }
+/* ─────── Pulse animation for number changes ─────── */
+@keyframes flash {
+  0% { background: transparent; }
+  20% { background: rgba(184,82,28,0.10); }
+  100% { background: transparent; }
+}
+.flash { animation: flash .5s ease; }
 
-  .group-divider { height: 24px; }
-  .error-msg { color: var(--red); font-size: 11px; padding: 8px; }
+/* ─────── Changelog banner ─────── */
+.changelog {
+  margin-bottom: 28px;
+  padding: 10px 16px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+  border-left: 3px solid var(--accent-up);
+}
+.changelog .cl-tag {
+  font-weight: 700;
+  color: var(--accent-up);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.changelog .cl-body { flex: 1; }
+.changelog .cl-body b { color: var(--ink); font-weight: 700; }
+.changelog .delta-pill {
+  display: inline-block;
+  padding: 1px 5px;
+  background: var(--paper-deep);
+  border-radius: 2px;
+  margin: 0 2px;
+  font-weight: 500;
+}
 
-  .price-range { font-size: 10px; color: var(--text-muted); }
-  .range-bar-wrap { display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
-  .range-bar { width: 60px; height: 3px; background: var(--bg3); position: relative; border-radius: 2px; overflow: visible; }
-  .range-marker { position: absolute; top: -2px; width: 3px; height: 7px; background: var(--amber); border-radius: 1px; }
+/* ─────── Value gauge (row-based, no label overlap) ─────── */
+.value-gauge {
+  margin: 18px 0 28px 0;
+  padding: 22px 28px 18px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+}
+.value-gauge .gauge-label {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink-muted);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.gauge-rows { margin-bottom: 10px; }
+.gauge-row {
+  display: grid;
+  grid-template-columns: 64px 1fr 72px;
+  align-items: center;
+  gap: 14px;
+  margin: 6px 0;
+}
+.gauge-row .g-name {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.gauge-row.market .g-name { color: var(--ink-muted); }
+.gauge-row.base .g-name { color: var(--accent-up); font-weight: 600; }
+.gauge-row.upside .g-name { color: var(--pos); font-weight: 600; }
+.gauge-row .g-line {
+  position: relative;
+  height: 18px;
+}
+.gauge-row .g-line::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 0;
+  right: 0;
+  height: 1.5px;
+  background: var(--rule);
+}
+.gauge-row .g-mark {
+  position: absolute;
+  top: 1px;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 16px;
+  z-index: 2;
+}
+.gauge-row.market .g-mark { background: var(--ink-muted); width: 2px; }
+.gauge-row.base .g-mark { background: var(--accent-up); width: 4px; }
+.gauge-row.upside .g-mark { background: var(--pos); width: 3px; }
+.gauge-row .g-val {
+  font-family: var(--serif);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: right;
+  letter-spacing: -0.01em;
+}
+.gauge-row.market .g-val { color: var(--ink-muted); }
+.gauge-row.base .g-val { color: var(--accent-up); }
+.gauge-row.upside .g-val { color: var(--pos); }
+.gauge-scale {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink-muted);
+  padding: 0 86px 0 78px;  /* align with the line column */
+  margin-bottom: 8px;
+}
+.gauge-note {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  text-align: center;
+}
+.gauge-note b { color: var(--ink); font-weight: 600; }
 
-  .col-head-sort { cursor: pointer; user-select: none; }
-  .col-head-sort:hover { color: var(--text); }
+/* ─────── Waterfall chart ─────── */
+.waterfall {
+  margin: 0 0 28px 0;
+  padding: 20px 28px 16px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+}
+.waterfall .wf-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+.waterfall .wf-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.waterfall .wf-totals {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+}
+.waterfall .wf-totals b {
+  font-family: var(--serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-left: 6px;
+}
+.waterfall svg {
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  display: block;
+}
+.waterfall .wf-gridline { stroke: var(--rule); stroke-width: 0.5; }
+.waterfall .wf-bar { transition: opacity 0.15s ease; }
+.waterfall .wf-bar.pos { fill: var(--pos); fill-opacity: 0.85; }
+.waterfall .wf-bar.neg { fill: var(--neg); fill-opacity: 0.85; }
+.waterfall .wf-bar.total { fill: var(--ink); fill-opacity: 0.9; }
+.waterfall .wf-connector { stroke: var(--ink-muted); stroke-width: 1; stroke-dasharray: 2 2; opacity: 0.5; }
+.waterfall .wf-axis { stroke: var(--ink-soft); stroke-width: 1; }
+.waterfall .wf-cat-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  fill: var(--ink-soft);
+  text-anchor: middle;
+}
+.waterfall .wf-val-label {
+  font-family: var(--serif);
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--ink);
+  text-anchor: middle;
+}
+.waterfall .wf-val-label.muted { fill: var(--ink-muted); font-weight: 500; }
+.waterfall .wf-yaxis-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  fill: var(--ink-muted);
+  text-anchor: end;
+}
 
-  .info-row td { font-size: 10px; color: var(--text-muted); padding: 4px 10px; }
+/* ─────── Timing distribution chart ─────── */
+.timing-chart {
+  margin: 12px 0 4px;
+  padding: 14px 14px 10px;
+  background: var(--paper-deep);
+  border-radius: 2px;
+}
+.timing-chart .tc-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ink-muted);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.timing-chart .tc-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.timing-chart .tc-quarter {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+  width: 48px;
+  flex-shrink: 0;
+}
+.timing-chart .tc-track {
+  flex: 1;
+  height: 14px;
+  background: var(--paper);
+  border-radius: 1px;
+  position: relative;
+}
+.timing-chart .tc-fill {
+  height: 100%;
+  background: var(--accent-up);
+  opacity: 0.75;
+  border-radius: 1px;
+  transition: width 0.2s ease;
+}
+.timing-chart .tc-pct {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink);
+  width: 32px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.timing-chart .tc-foot {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ink-muted);
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--rule);
+}
+
+/* ─────── Constants hierarchy ─────── */
+.constants-group { margin-bottom: 14px; }
+.constants-group:last-child { margin-bottom: 0; }
+.constants-group .cg-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ink-muted);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin: 4px 0 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--rule);
+}
+.constants-group table { width: 100%; }
+.constants-group .cg-primary td {
+  font-size: 12px;
+  padding: 7px 0;
+}
+.constants-group .cg-primary td:last-child {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink);
+}
+.constants-group .cg-secondary td {
+  font-size: 11px;
+  padding: 5px 0;
+  color: var(--ink-soft);
+}
+.constants-group .cg-secondary td:last-child {
+  font-weight: 500;
+  color: var(--ink);
+}
+.constants-group .cg-tertiary td {
+  font-size: 10.5px;
+  padding: 4px 0;
+  color: var(--ink-muted);
+}
+.constants-group .cg-tertiary td:last-child { color: var(--ink-soft); font-weight: 500; }
+.constants-group .src {
+  display: block;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ink-muted);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+.constants-group .cg-tertiary .src { font-size: 8.5px; }
 </style>
 </head>
 <body>
+<div class="shell">
 
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="loading-title">CORZ DASHBOARD</div>
-  <div class="loading-bar"><div class="loading-progress"></div></div>
-  <div class="loading-sub" id="loadingSub">Fetching market data…</div>
-</div>
+  <!-- Masthead -->
+  <header class="masthead">
+    <div class="brand">
+      <div class="eyebrow">Core Scientific · NASDAQ: CORZ · Sum-of-the-Parts</div>
+      <h1>A two-case <em>valuation</em> tied to the deal-announcement catalyst</h1>
+    </div>
+    <div class="meta">
+      <span class="ver-pill">v17</span><br>
+      <b>Updated</b> Jun 02 2026<br>
+      <b>Position</b> CORZ + CORZW
+    </div>
+  </header>
 
-<!-- HEADER -->
-<div class="header">
-  <div class="header-left">
-    <div class="logo">CORZ <span>/ INVESTMENT DASHBOARD</span></div>
-    <div class="header-meta" id="lastUpdated">—</div>
+  <!-- Scenario toggle -->
+  <div class="scenario-bar">
+    <button class="scenario-btn active" data-scenario="base">
+      <span class="sb-tag">Case A</span>
+      <span class="sb-title">Base — New Lease sometime now – Q3 2027</span>
+    </button>
+    <button class="scenario-btn" data-scenario="upside">
+      <span class="sb-tag">Case B</span>
+      <span class="sb-title">Upside — New Lease this month + higher % of next lease</span>
+    </button>
   </div>
-  <div class="header-right">
-    <div class="status-dot" id="statusDot"></div>
-    <button class="refresh-btn" onclick="refreshAll()">↻ REFRESH</button>
-  </div>
-</div>
 
-<!-- SPOTLIGHT: CORZ -->
-<div class="spotlight" id="spotlight">
-  <div>
-    <div class="spot-main">
-      <div class="spot-ticker">CORZ</div>
-      <div>
-        <div class="spot-name">Core Scientific, Inc. · HPC / Bitcoin Mining</div>
-        <div style="display:flex; align-items:baseline; gap:12px; margin-top:4px;">
-          <div class="spot-price" id="sp-price">—</div>
-          <div class="spot-change" id="sp-change">—</div>
+  <!-- Waterfall (full-width): how the buckets build up to equity value -->
+  <div class="waterfall">
+    <div class="wf-head">
+      <div class="wf-title">Sum-of-the-parts · waterfall</div>
+      <div class="wf-totals">
+        <span id="wf-scenario-label">Base case</span>
+        <b id="wf-total-label">$11.90B  ·  $27.36/sh</b>
+      </div>
+    </div>
+    <svg id="waterfall-svg" viewBox="0 0 1200 280" preserveAspectRatio="xMidYMid meet"></svg>
+  </div>
+
+  <!-- Main two-column layout -->
+  <div class="layout">
+
+    <!-- LEFT: Output -->
+    <section>
+      <div class="hero">
+        <div class="label">Probability-weighted equity value · per diluted share</div>
+        <div class="big-number">
+          <span class="dollar">$</span><span id="big-num">27.36</span>
+        </div>
+        <div class="sub">
+          Equity value <b id="big-eq">$11.90B</b> ÷ <b>435M</b> diluted shares
+        </div>
+        <div class="delta">
+          vs. base case<br>
+          <b id="big-delta">+$5.78</b>
         </div>
       </div>
-    </div>
-  </div>
-  <div class="spot-stats">
-    <div class="spot-stat">
-      <div class="spot-stat-label">1W</div>
-      <div class="spot-stat-val" id="sp-1w">—</div>
-    </div>
-    <div class="spot-stat">
-      <div class="spot-stat-label">1M</div>
-      <div class="spot-stat-val" id="sp-1m">—</div>
-    </div>
-    <div class="spot-stat">
-      <div class="spot-stat-label">YTD</div>
-      <div class="spot-stat-val" id="sp-ytd">—</div>
-    </div>
-    <div class="spot-stat">
-      <div class="spot-stat-label">1Y</div>
-      <div class="spot-stat-val" id="sp-1y">—</div>
-    </div>
-    <div class="spot-stat">
-      <div class="spot-stat-label">Mkt Cap</div>
-      <div class="spot-stat-val" id="sp-mktcap">—</div>
-    </div>
-    <div class="spot-stat">
-      <div class="spot-stat-label">52W Range</div>
-      <div class="spot-stat-val" id="sp-range">—</div>
-    </div>
-    <div class="spot-stat">
-      <div class="spot-stat-label">Volume</div>
-      <div class="spot-stat-val" id="sp-vol">—</div>
-    </div>
-  </div>
-  <div class="spot-right">
-    <div class="spot-pt" id="sp-pt-label">Analyst PT —</div>
-    <div class="spot-upside" id="sp-upside">—</div>
-    <div style="font-size:10px; color:var(--text-muted); margin-top:4px;" id="sp-consensus">—</div>
-  </div>
-</div>
 
-<!-- TABS -->
-<div class="tabs">
-  <div class="tab active" onclick="switchTab('overview')">OVERVIEW</div>
-  <div class="tab" onclick="switchTab('financials')">FINANCIALS</div>
-  <div class="tab" onclick="switchTab('analyst')">ANALYST TARGETS</div>
-</div>
-
-<!-- MAIN -->
-<div class="main">
-
-  <!-- OVERVIEW TAB -->
-  <div class="tab-panel active" id="tab-overview">
-
-    <!-- Core Position -->
-    <div class="section">
-      <div class="section-header">
-        <div class="section-label" style="color:var(--corz); border-color:var(--corz);">Core Position</div>
-        <div class="section-line"></div>
-        <div style="font-size:9px;color:var(--text-muted);">HPC / Bitcoin Mining Infrastructure</div>
+      <!-- Value gauge: where the model lands vs. market -->
+      <div class="value-gauge">
+        <div class="gauge-label">Market vs Model · per share</div>
+        <div class="gauge-rows" id="gauge-rows">
+          <!-- Rows generated by JS -->
+        </div>
+        <div class="gauge-scale"><span>$20</span><span>$35</span></div>
+        <div class="gauge-note" id="gauge-note">
+          Implied prob of upside scenario: <b id="gauge-impprob">25%</b>
+        </div>
       </div>
-      <table class="data-table" id="table-core">
-        <thead><tr id="thead-main"></tr></thead>
-        <tbody id="tbody-core"></tbody>
-      </table>
-    </div>
 
-    <!-- AI/HPC Transition Comps -->
-    <div class="section">
-      <div class="section-header">
-        <div class="section-label">AI/HPC Transition Comps</div>
-        <div class="section-line"></div>
-        <div style="font-size:9px;color:var(--text-muted);">Miners pivoting to AI/HPC hosting</div>
+      <div class="decomp">
+        <h3>Sum-of-the-parts decomposition <span class="right">$ / share</span></h3>
+        <table id="decomp-table">
+          <tbody>
+            <tr>
+              <td class="row-name">CoreWeave lease<span class="hint">590 MW · 12-yr take-or-pay · IG-rated CW SPV</span></td>
+              <td class="col-val pos" id="r-cw-val">+$5.84B</td>
+              <td class="col-dollars pos" id="r-cw-ps">+$13.42</td>
+              <td class="col-delta" id="r-cw-d">±0</td>
+            </tr>
+            <tr>
+              <td class="row-name">Pecos expansion<span class="hint">800 MW · 15-yr term · 100% exec × 81% weighted time factor</span></td>
+              <td class="col-val pos" id="r-pe-val">+$6.00B</td>
+              <td class="col-dollars pos" id="r-pe-ps">+$13.80</td>
+              <td class="col-delta" id="r-pe-d">±0</td>
+            </tr>
+            <tr>
+              <td class="row-name">Muskogee + Hunt County<span class="hint">Combined optionality · prob × if-signed NPV (15-yr basis)</span></td>
+              <td class="col-val pos" id="r-mh-val">+$1.13B</td>
+              <td class="col-dollars pos" id="r-mh-ps">+$2.59</td>
+              <td class="col-delta" id="r-mh-d">±0</td>
+            </tr>
+            <tr>
+              <td class="row-name">BTC + Mining + Cash + Receivable + NOL<span class="hint">Fixed add-backs · BTC marked to Q1 spot</span></td>
+              <td class="col-val pos" id="r-ad-val">+$0.84B</td>
+              <td class="col-dollars pos" id="r-ad-ps">+$1.94</td>
+              <td class="col-delta" id="r-ad-d">±0</td>
+            </tr>
+            <tr>
+              <td class="row-name">SBC capitalized<span class="hint">$98.2M FY25 expense × multiple</span></td>
+              <td class="col-val neg" id="r-sb-val">−$1.18B</td>
+              <td class="col-dollars neg" id="r-sb-ps">−$2.71</td>
+              <td class="col-delta" id="r-sb-d">±0</td>
+            </tr>
+            <tr>
+              <td class="row-name">Completion + Denton + HoldCo<span class="hint">Contingent + known capex + complexity discount</span></td>
+              <td class="col-val neg" id="r-de-val">−$0.73B</td>
+              <td class="col-dollars neg" id="r-de-ps">−$1.68</td>
+              <td class="col-delta" id="r-de-d">±0</td>
+            </tr>
+            <tr class="total">
+              <td class="row-name">Equity value per share</td>
+              <td class="col-val" id="r-tt-val">$11.90B</td>
+              <td class="col-dollars" id="r-tt-ps">$27.36</td>
+              <td class="col-delta" id="r-tt-d">±0</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <table class="data-table" id="table-hpc">
-        <thead><tr id="thead-hpc"></tr></thead>
-        <tbody id="tbody-hpc"></tbody>
-      </table>
-    </div>
 
-    <!-- Demand Proxies -->
-    <div class="section">
-      <div class="section-header">
-        <div class="section-label" style="color:var(--blue); border-color:var(--blue);">Demand Proxies</div>
-        <div class="section-line"></div>
-        <div style="font-size:9px;color:var(--text-muted);">AI compute demand drivers · Hyperscalers & GPU</div>
+      <div class="formula">
+        <b>Equity</b> = vCW + vPecos + vOpt + Adds − (SBC×mult + Completion + Denton + HoldCo) <span class="arrow">→</span> <b>÷ 435M shares</b><br>
+        <b>vCW</b> = (NOI×mult − debt) / (1+d)^yr · <b>vPecos</b> = rate×MW×12×NOI% × ann(d, 15yr) × prob · <b>vOpt</b> = prob × NPV
       </div>
-      <table class="data-table" id="table-demand">
-        <thead><tr id="thead-demand"></tr></thead>
-        <tbody id="tbody-demand"></tbody>
-      </table>
-    </div>
+    </section>
 
-    <!-- Buildout Bottlenecks -->
-    <div class="section">
-      <div class="section-header">
-        <div class="section-label" style="color:var(--amber); border-color:var(--amber);">Buildout Bottlenecks</div>
-        <div class="section-line"></div>
-        <div style="font-size:9px;color:var(--text-muted);">Power / electrical infrastructure enabling data center growth</div>
+    <!-- RIGHT: Controls -->
+    <aside class="controls">
+
+      <div class="panel" data-section="cw">
+        <div class="panel-head">
+          <h2>CoreWeave lease</h2>
+          <span class="tag">The anchor · $5.84B</span>
+        </div>
+        <p class="panel-note">Treated as firm value across both cases. CW SPV with IG-rated debt structurally ring-fences the lease — credit picture transformed by Meta/Anthropic/Jane Street disclosures in April.</p>
+        <!-- Sliders injected here -->
       </div>
-      <table class="data-table" id="table-buildout">
-        <thead><tr id="thead-buildout"></tr></thead>
-        <tbody id="tbody-buildout"></tbody>
-      </table>
-    </div>
 
-    <!-- Legacy Mining -->
-    <div class="section">
-      <div class="section-header">
-        <div class="section-label" style="color:var(--text-muted); border-color:var(--border);">Legacy Mining Comps</div>
-        <div class="section-line"></div>
-        <div style="font-size:9px;color:var(--text-muted);">Lower-priority pure-play Bitcoin miners</div>
+      <div class="panel" data-section="pecos">
+        <div class="panel-head">
+          <h2>Pecos expansion</h2>
+          <span class="tag" id="pecos-yoc-badge">YoC <b id="pecos-yoc">11.7%</b></span>
+        </div>
+        <p class="panel-note">15-yr term, 800 MW (~600 MW grid + partial BTM credit per Sullivan, TD Cowen 5/28). Probability factor = 100% execution × time discount at 10%. Base: <b>81%</b> (weighted across Q3'26→Q3'27 distribution). Upside: <b>87%</b> (signing by 6/30, 1.5-yr build lag → 1/1.10^1.5 = 0.867).</p>
+        <div class="timing-chart">
+          <div class="tc-label">Base case timing distribution</div>
+          <div class="tc-row"><span class="tc-quarter">Q3'26</span><div class="tc-track"><div class="tc-fill" style="width:60%"></div></div><span class="tc-pct">15%</span></div>
+          <div class="tc-row"><span class="tc-quarter">Q4'26</span><div class="tc-track"><div class="tc-fill" style="width:100%"></div></div><span class="tc-pct">25%</span></div>
+          <div class="tc-row"><span class="tc-quarter">Q1'27</span><div class="tc-track"><div class="tc-fill" style="width:100%"></div></div><span class="tc-pct">25%</span></div>
+          <div class="tc-row"><span class="tc-quarter">Q2'27</span><div class="tc-track"><div class="tc-fill" style="width:100%"></div></div><span class="tc-pct">25%</span></div>
+          <div class="tc-row"><span class="tc-quarter">Q3'27</span><div class="tc-track"><div class="tc-fill" style="width:40%"></div></div><span class="tc-pct">10%</span></div>
+          <div class="tc-foot">Weighted PV factor at 10% = 81.3% · assumes 1.5-yr build lag</div>
+        </div>
       </div>
-      <table class="data-table" id="table-legacy">
-        <thead><tr id="thead-legacy"></tr></thead>
-        <tbody id="tbody-legacy"></tbody>
-      </table>
-    </div>
 
-  </div><!-- end overview -->
-
-  <!-- FINANCIALS TAB -->
-  <div class="tab-panel" id="tab-financials">
-    <div class="fin-controls">
-      <span class="fin-label">TICKER</span>
-      <select class="fin-select" id="finTicker" onchange="loadFinancials()">
-        <option value="CORZ">CORZ</option>
-        <option value="CRWV">CRWV</option>
-        <option value="APLD">APLD</option>
-        <option value="VRT">VRT</option>
-        <option value="CIFR">CIFR</option>
-        <option value="WULF">WULF</option>
-        <option value="HUT">HUT</option>
-        <option value="IREN">IREN</option>
-        <option value="MSFT">MSFT</option>
-        <option value="META">META</option>
-        <option value="NVDA">NVDA</option>
-        <option value="AMD">AMD</option>
-        <option value="ETN">ETN</option>
-        <option value="PWR">PWR</option>
-        <option value="HUBB">HUBB</option>
-        <option value="MARA">MARA</option>
-        <option value="RIOT">RIOT</option>
-        <option value="CLSK">CLSK</option>
-        <option value="BITF">BITF</option>
-      </select>
-      <span class="fin-label" style="margin-left:16px;">PERIOD</span>
-      <div class="period-toggle">
-        <button class="period-btn active" id="btn-annual" onclick="setPeriod('annual')">ANNUAL</button>
-        <button class="period-btn" id="btn-quarter" onclick="setPeriod('quarter')">QUARTERLY</button>
+      <div class="panel" data-section="mh">
+        <div class="panel-head">
+          <h2>Muskogee + Hunt County</h2>
+          <span class="tag">Optionality bucket</span>
+        </div>
+        <p class="panel-note">Polaris DS ($421M / 440 MW gross / 330 IT MW per Needham) + Hunt County ($232.5M / ~285 MW leasable). Combined NPV removes 70 MW Muskogee double-count with CW bucket. Both BTM-dependent for full 1 GW campus scale.</p>
       </div>
-      <span id="fin-loading" style="font-size:10px;color:var(--text-muted);margin-left:8px;"></span>
-    </div>
 
-    <div class="fin-grid">
-      <!-- Income Statement -->
-      <div class="fin-block">
-        <div class="fin-block-header">Income Statement</div>
-        <div id="fin-income">
-          <table class="fin-table">
-            <thead><tr id="fin-income-head"></tr></thead>
-            <tbody id="fin-income-body"><tr><td colspan="5" style="color:var(--text-muted);padding:20px;text-align:center;">Select a ticker to load financials</td></tr></tbody>
+      <div class="panel" data-section="adj">
+        <div class="panel-head">
+          <h2>Adjustments</h2>
+          <button class="reset-btn" id="reset-btn">Reset</button>
+        </div>
+        <p class="panel-note">SBC at FY25 run-rate ($98.2M); Q1 2026 annualized at $71M but Compass/Needham consensus forecasts $100M+ FY26. HoldCo absorbs G&A, material-weakness complexity discount.</p>
+      </div>
+
+      <!-- Fixed constants -->
+      <div class="constants">
+        <div class="panel-head">
+          <h2>Fixed inputs</h2>
+          <span class="tag">From filings · not adjustable</span>
+        </div>
+
+        <div class="constants-group">
+          <div class="cg-label">Primary drivers</div>
+          <table class="cg-primary">
+            <tr><td>CW annual NOI (steady state)<span class="src">Q1 2026 guidance · 80–85% margin × ~$850M rev · Jefferies confirms $706M</span></td><td>$700M</td></tr>
+            <tr><td>Build cost per MW (turnkey)<span class="src">Sullivan, TD Cowen 5/28/26 — was ~$8M two years ago</span></td><td>$11.5M</td></tr>
+            <tr><td>Terminal debt at Yr 6<span class="src">$3.3B notes less amortization</span></td><td>$2,285M</td></tr>
+            <tr><td>Diluted shares<span class="src">317.9M basic + 96.7M CORZW + 15.3M RSU/PSU/MSU + ~5M post-10K · ex-convertibles (69.6M)</span></td><td>435M</td></tr>
+          </table>
+        </div>
+
+        <div class="constants-group">
+          <div class="cg-label">Capex & opex deductions</div>
+          <table class="cg-secondary">
+            <tr><td>SBC base (FY25)<span class="src">vs $71M Q1 run-rate · analysts forecast $100M+ FY26</span></td><td>$98.2M</td></tr>
+            <tr><td>Completion guarantee reserve<span class="src">~3.8% of $3.3B notes principal</span></td><td>$125M</td></tr>
+            <tr><td>Denton remaining capex<span class="src">Apr 2026 8-K disclosure</span></td><td>$104M</td></tr>
+          </table>
+        </div>
+
+        <div class="constants-group">
+          <div class="cg-label">Add-backs &amp; residuals</div>
+          <table class="cg-tertiary">
+            <tr><td>Parent-level free cash<span class="src">Q1 + notes − bridge − Hunt − Polaris escrow</span></td><td>$400M</td></tr>
+            <tr><td>Customer funding receivable<span class="src">Conservative cut of Q1 10-Q $352M line</span></td><td>$250M</td></tr>
+            <tr><td>NOL tax shield (after §382)<span class="src">$275.5M DTA × ownership-change haircut</span></td><td>$75M</td></tr>
+            <tr><td>Mining wind-down residual<span class="src">Post $266.5M Q1 impairment</span></td><td>$75M</td></tr>
+            <tr><td>BTC treasury<span class="src">Q1 10-Q · 547 BTC × ~$80K spot</span></td><td>$44M</td></tr>
           </table>
         </div>
       </div>
-      <!-- Balance Sheet -->
-      <div class="fin-block">
-        <div class="fin-block-header">Balance Sheet</div>
-        <div id="fin-balance">
-          <table class="fin-table">
-            <thead><tr id="fin-balance-head"></tr></thead>
-            <tbody id="fin-balance-body"><tr><td colspan="5" style="color:var(--text-muted);padding:20px;text-align:center;">Select a ticker to load financials</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    </aside>
+  </div>
 
-    <!-- Cash Flow -->
-    <div style="margin-top:20px;">
-      <div class="fin-block">
-        <div class="fin-block-header">Cash Flow Statement</div>
-        <div>
-          <table class="fin-table">
-            <thead><tr id="fin-cf-head"></tr></thead>
-            <tbody id="fin-cf-body"><tr><td colspan="5" style="color:var(--text-muted);padding:20px;text-align:center;">Select a ticker to load financials</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div><!-- end financials -->
-
-  <!-- ANALYST TAB -->
-  <div class="tab-panel" id="tab-analyst">
-    <div class="analyst-controls">
-      <span class="fin-label">TICKER</span>
-      <select class="fin-select" id="analystTicker" onchange="loadAnalyst()">
-        <option value="CORZ">CORZ</option>
-        <option value="CRWV">CRWV</option>
-        <option value="APLD">APLD</option>
-        <option value="VRT">VRT</option>
-        <option value="CIFR">CIFR</option>
-        <option value="WULF">WULF</option>
-        <option value="HUT">HUT</option>
-        <option value="IREN">IREN</option>
-        <option value="MSFT">MSFT</option>
-        <option value="META">META</option>
-        <option value="NVDA">NVDA</option>
-        <option value="AMD">AMD</option>
-        <option value="ETN">ETN</option>
-        <option value="PWR">PWR</option>
-        <option value="HUBB">HUBB</option>
-        <option value="MARA">MARA</option>
-        <option value="RIOT">RIOT</option>
-        <option value="CLSK">CLSK</option>
-        <option value="BITF">BITF</option>
-      </select>
-      <span id="analyst-consensus-wrap" style="margin-left:16px;"></span>
-      <span id="analyst-loading" style="font-size:10px;color:var(--text-muted);margin-left:8px;"></span>
-    </div>
-
-    <!-- Summary row -->
-    <div id="analyst-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;"></div>
-
-    <!-- Price target table -->
-    <div class="fin-block">
-      <div class="fin-block-header">Individual Analyst Price Targets</div>
-      <table class="data-table" style="width:100%;">
-        <thead>
-          <tr>
-            <th style="text-align:left;">Analyst</th>
-            <th style="text-align:left;">Firm</th>
-            <th>Action</th>
-            <th>Rating</th>
-            <th>Change</th>
-            <th>Date</th>
-          </tr>
-        </thead>
-        <tbody id="analyst-tbody"></tbody>
-      </table>
-    </div>
-  </div><!-- end analyst -->
-
-</div><!-- end main -->
+  <footer class="footer">
+    <span class="disc">Not financial advice. Personal analysis of publicly available information. Position decisions should reflect individual risk tolerance and independent diligence.</span>
+    <span>CORZ v17 · MM</span>
+  </footer>
+</div>
 
 <script>
-// Yahoo Finance via CORS proxy — no API key needed
-const PROXY = 'https://corsproxy.io/?';
-const YF1 = 'https://query1.finance.yahoo.com';
-const YF2 = 'https://query2.finance.yahoo.com';
-
-async function yfFetch(url) {
-  const r = await fetch(PROXY + encodeURIComponent(url));
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
-}
-
-const GROUPS = {
-  core:     { label: 'Core Position',         tickers: ['CORZ','CRWV','APLD','VRT'] },
-  hpc:      { label: 'AI/HPC Transition',      tickers: ['CIFR','WULF','HUT','IREN'] },
-  demand:   { label: 'Demand Proxies',         tickers: ['MSFT','META','NVDA','AMD'] },
-  buildout: { label: 'Buildout Bottlenecks',   tickers: ['ETN','PWR','HUBB'] },
-  legacy:   { label: 'Legacy Mining Comps',    tickers: ['MARA','RIOT','CLSK','BITF'] },
-};
-const ALL_TICKERS = Object.values(GROUPS).flatMap(g => g.tickers);
-
-const NAMES = {
-  CORZ:'Core Scientific', CRWV:'CoreWeave', APLD:'Applied Digital', VRT:'Vertiv Holdings',
-  CIFR:'Cipher Mining', WULF:'TeraWulf', HUT:'Hut 8 Corp', IREN:'IREN Ltd',
-  MSFT:'Microsoft', META:'Meta Platforms', NVDA:'NVIDIA', AMD:'Advanced Micro Devices',
-  ETN:'Eaton Corp', PWR:'Quanta Services', HUBB:'Hubbell Inc',
-  MARA:'MARA Holdings', RIOT:'Riot Platforms', CLSK:'CleanSpark', BITF:'Bitfarms',
+// ─────── Scenario defaults ───────
+// v17 — Analyst refinement (6/02/26):
+//   • Base lease rate $155 → $145 (more conservative; upside stays at $155 = APLD comp)
+//   • M+HC base newprob 32 → 25 (less confidence in second-deal flywheel)
+//   • M+HC upside newprob 47 → 50 (deal-confirmed boost to second-site optionality)
+//   • Upside ulprob 72 → 87 (was legacy 85% exec × 85% time; now deal-certain × 87% time at Q2'26 signing)
+//   • Pecos MW unified at 800 in both cases (capacity isn't the lever; timing + rate are)
+// v15 — Timing distribution Q4'26 35→25%, add Q3'27 10%, ulprob 82→81
+// v14 — Treat next IG deal as certain (not probabilistic); Pecos base ulprob 43→82
+// v13 — Term 12yr → 15yr per recent Tier 1 comps (APLD/HUT/CIFR); Pecos base ulprob 37→43
+// v12 — Post-TD Cowen: Pecos MW 1000→800/900; ulprob lowered; M+HC NPV cut
+const SCENARIOS = {
+  base: {
+    cwmult: 16.5, cwdisc: 8, cwyr: 6,
+    rate: 145, mw: 800, disc: 10, ulprob: 81,
+    newprob: 25, newnpv: 4.5,
+    sbcmult: 12, holdco: 0.50
+  },
+  upside: {
+    cwmult: 16.5, cwdisc: 8, cwyr: 6,
+    rate: 155, mw: 800, disc: 10, ulprob: 87,
+    newprob: 50, newnpv: 5.5,
+    sbcmult: 12, holdco: 0.50
+  }
 };
 
-// State
-let quoteData = {};
-let histData = {};
-let priceTargets = {};
-let finPeriod = 'annual';
+// ─────── Fixed constants ───────
+const K = {
+  NOI: 700,            // $M, steady-state CoreWeave NOI
+  TERMINAL_DEBT: 2285, // $M
+  BTC: 44,             // $M — Q1 10-Q mark (547 BTC × ~$80K spot per Jefferies May 12)
+  MINING: 75,
+  CASH: 400,
+  RECEIVABLE: 250,
+  NOL: 75,
+  SBC_BASE: 98.2,
+  COMPLETION: 125,
+  DENTON: 104,
+  PECOS_NOI_MARGIN: 0.70,
+  PECOS_TERM_YR: 15,   // v13 — recent Tier 1 hyperscaler comps (APLD Polaris Forge 3, HUT Beacon Point, CIFR/AMZN) all 15-yr
+  BUILD_COST_PER_MW: 11.5,  // $M/MW — Sullivan, TD Cowen 5/28/26 (was ~$8M two years ago)
+  SHARES: 435          // millions — corrected for CORZZ penny warrant double-count
+};
 
+// ─────── Slider definitions ───────
+const SLIDERS = [
+  // CoreWeave
+  { id:'cwmult', section:'cw', label:'Terminal multiple', hint:'× NOI', min:10, max:25, step:0.5, fmt:v=>v.toFixed(1)+'×' },
+  { id:'cwdisc', section:'cw', label:'Discount rate', hint:'% / yr', min:4, max:15, step:0.25, fmt:v=>v.toFixed(2)+'%' },
+  { id:'cwyr',   section:'cw', label:'Years to terminal', hint:'years', min:4, max:10, step:1, fmt:v=>v+' yr' },
+  // Pecos
+  { id:'rate',   section:'pecos', label:'Lease rate', hint:'$/kW/mo', min:80, max:200, step:5, fmt:v=>'$'+v+'/kW' },
+  { id:'mw',     section:'pecos', label:'Leasable capacity', hint:'MW', min:200, max:1500, step:50, fmt:v=>v.toLocaleString()+' MW' },
+  { id:'disc',   section:'pecos', label:'Discount rate', hint:'% / yr', min:6, max:15, step:0.25, fmt:v=>v.toFixed(2)+'%' },
+  { id:'ulprob', section:'pecos', label:'Combined probability', hint:'exec × time', min:0, max:100, step:1, fmt:v=>v+'%' },
+  // M+HC
+  { id:'newprob', section:'mh', label:'Blended probability', hint:'M + HC combined', min:0, max:100, step:1, fmt:v=>v+'%' },
+  { id:'newnpv',  section:'mh', label:'If-signed combined NPV', hint:'$B', min:0, max:12, step:0.25, fmt:v=>'$'+v.toFixed(2)+'B' },
+  // Adjustments
+  { id:'sbcmult', section:'adj', label:'SBC capitalization multiple', hint:'× $98.2M', min:0, max:20, step:1, fmt:v=>v+'×' },
+  { id:'holdco',  section:'adj', label:'HoldCo discount', hint:'$B', min:0, max:1.5, step:0.05, fmt:v=>'$'+v.toFixed(2)+'B' }
+];
 
-function fmt(n, dec=2) {
-  if (n === null || n === undefined || isNaN(n)) return '—';
-  return Number(n).toLocaleString('en-US', {minimumFractionDigits:dec, maximumFractionDigits:dec});
-}
-function fmtPct(n) {
-  if (n === null || n === undefined || isNaN(n)) return '—';
-  const s = (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
-  return s;
-}
-function fmtLarge(n) {
-  if (!n) return '—';
-  if (Math.abs(n) >= 1e12) return (n/1e12).toFixed(2) + 'T';
-  if (Math.abs(n) >= 1e9)  return (n/1e9).toFixed(2) + 'B';
-  if (Math.abs(n) >= 1e6)  return (n/1e6).toFixed(2) + 'M';
-  return n.toFixed(0);
-}
-function pctClass(n) {
-  if (!n && n !== 0) return 'neu';
-  return n >= 0 ? 'pos' : 'neg';
-}
-function pctCell(n) {
-  return `<span class="${pctClass(n)}">${fmtPct(n)}</span>`;
-}
+// ─────── State ───────
+let scenario = 'base';
+let state = { ...SCENARIOS.base };
 
-// Compute period returns from history
-function computeReturns(hist) {
-  if (!hist || hist.length < 2) return { w1: null, m1: null, ytd: null, y1: null };
-  const sorted = [...hist].sort((a,b) => new Date(b.date) - new Date(a.date));
-  const latest = sorted[0].close;
-  const now = new Date();
-  const ago = (days) => new Date(now - days * 86400000);
-  const find = (target) => {
-    const t = target.getTime();
-    return sorted.find(d => new Date(d.date).getTime() <= t);
-  };
-  const p1w = find(ago(7));
-  const p1m = find(ago(30));
-  const ytdDate = new Date(now.getFullYear(), 0, 1);
-  const pytd = find(ytdDate);
-  const p1y = find(ago(365));
+// ─────── Math ───────
+function annuityFactor(disc, term) {
+  const r = disc / 100;
+  return (1 - Math.pow(1 + r, -term)) / r;
+}
+function compute(s) {
+  // CoreWeave lease ($M)
+  const grossTerm = K.NOI * s.cwmult;
+  const netTerm = grossTerm - K.TERMINAL_DEBT;
+  const vCW = netTerm / Math.pow(1 + s.cwdisc/100, s.cwyr);
+
+  // Pecos ($M)
+  const annualRev = s.rate * s.mw * 1000 * 12 / 1e6; // $M/yr
+  const annualNOI = annualRev * K.PECOS_NOI_MARGIN;
+  const af = annuityFactor(s.disc, K.PECOS_TERM_YR);
+  const vPecosGross = annualNOI * af;
+  const vPecos = vPecosGross * (s.ulprob / 100);
+
+  // Implied yield-on-cost at the Pecos rate × MW × NOI margin against build cost
+  // YoC = annual NOI per MW / build cost per MW
+  // = (rate $/kW/mo × 12 mo × 1000 kW/MW × NOI margin) / (build cost per MW in $M × 1e6 $/M)
+  // simplified: (rate × 12 × NOI_margin) / (build_cost_per_MW × 1000) × 100 → %
+  const yoc = (s.rate * 12 * K.PECOS_NOI_MARGIN) / (K.BUILD_COST_PER_MW * 1000) * 100;
+
+  // M + HC ($M)
+  const vOpt = (s.newprob / 100) * s.newnpv * 1000;
+
+  // Adds ($M)
+  const adds = K.BTC + K.MINING + K.CASH + K.RECEIVABLE + K.NOL;
+
+  // Deducts ($M)
+  const sbc = K.SBC_BASE * s.sbcmult;
+  const otherDed = K.COMPLETION + K.DENTON + s.holdco * 1000;
+
+  // Equity ($M)
+  const equity = vCW + vPecos + vOpt + adds - sbc - otherDed;
+  const perShare = equity / K.SHARES;
+
   return {
-    w1:  p1w  ? (latest/p1w.close  - 1)*100 : null,
-    m1:  p1m  ? (latest/p1m.close  - 1)*100 : null,
-    ytd: pytd ? (latest/pytd.close - 1)*100 : null,
-    y1:  p1y  ? (latest/p1y.close  - 1)*100 : null,
+    vCW, vPecos, vOpt, adds,
+    sbc, otherDed,
+    equity, perShare, yoc,
+    breakdown: {
+      cw:  { val: vCW,      ps: vCW/K.SHARES,      sign:1 },
+      pe:  { val: vPecos,   ps: vPecos/K.SHARES,   sign:1 },
+      mh:  { val: vOpt,     ps: vOpt/K.SHARES,     sign:1 },
+      ad:  { val: adds,     ps: adds/K.SHARES,     sign:1 },
+      sb:  { val: sbc,      ps: sbc/K.SHARES,      sign:-1 },
+      de:  { val: otherDed, ps: otherDed/K.SHARES, sign:-1 }
+    }
   };
 }
 
-// Build table header
-function buildHeader(trId) {
-  const tr = document.getElementById(trId);
-  if (!tr) return;
-  tr.innerHTML = `
-    <th>Ticker</th>
-    <th>Name</th>
-    <th>Price</th>
-    <th>Day %</th>
-    <th class="hide-sm">1W %</th>
-    <th class="hide-sm">1M %</th>
-    <th>YTD %</th>
-    <th class="hide-md">1Y %</th>
-    <th class="hide-md">Analyst PT</th>
-    <th class="hide-md">Upside</th>
-    <th class="hide-md">Mkt Cap</th>
-  `;
-}
+// ─────── Formatters ───────
+const fmtB = (m) => {
+  // Format $M to $B with sign-aware rendering
+  const sign = m < 0 ? '−' : '+';
+  const abs = Math.abs(m) / 1000;
+  return sign + '$' + abs.toFixed(2) + 'B';
+};
+const fmtBunsigned = (m) => {
+  const abs = Math.abs(m) / 1000;
+  return '$' + abs.toFixed(2) + 'B';
+};
+const fmtPS = (ps) => {
+  const sign = ps < 0 ? '−' : '+';
+  return sign + '$' + Math.abs(ps).toFixed(2);
+};
+const fmtPSunsigned = (ps) => '$' + ps.toFixed(2);
+const fmtDelta = (cur, base) => {
+  const d = cur - base;
+  if (Math.abs(d) < 0.005) return '±0.00';
+  return (d > 0 ? '+' : '−') + '$' + Math.abs(d).toFixed(2);
+};
 
-function renderRow(ticker, tbodyId) {
-  const q = quoteData[ticker];
-  const h = histData[ticker] || [];
-  const ret = computeReturns(h);
-  const pt = priceTargets[ticker];
-  const isCorz = ticker === 'CORZ';
-
-  const price = q ? q.price : null;
-  const dayPct = q ? q.changesPercentage : null;
-  const mktCap = q ? q.marketCap : null;
-  const ptVal = pt ? pt.priceTarget : null;
-  const upside = (ptVal && price) ? (ptVal/price - 1)*100 : null;
-
-  let upsideHtml = '—';
-  if (upside !== null) {
-    const cls = upside >= 0 ? 'upside-pos' : 'upside-neg';
-    upsideHtml = `<span class="${cls}">${fmtPct(upside)}</span>`;
-  }
-
-  const tickerClass = isCorz ? 'ticker-cell corz' : 'ticker-cell';
-  const rowClass = isCorz ? 'corz-row' : '';
-
-  return `<tr class="${rowClass}" onclick="quickSelect('${ticker}')">
-    <td><span class="${tickerClass}">${ticker}</span></td>
-    <td>${NAMES[ticker] || ticker}</td>
-    <td>${price ? '$' + fmt(price) : '<span class="loading-cell">…</span>'}</td>
-    <td>${dayPct !== null ? pctCell(dayPct) : '<span class="loading-cell">…</span>'}</td>
-    <td class="hide-sm">${ret.w1 !== null ? pctCell(ret.w1) : '<span class="loading-cell">…</span>'}</td>
-    <td class="hide-sm">${ret.m1 !== null ? pctCell(ret.m1) : '<span class="loading-cell">…</span>'}</td>
-    <td>${ret.ytd !== null ? pctCell(ret.ytd) : '<span class="loading-cell">…</span>'}</td>
-    <td class="hide-md">${ret.y1 !== null ? pctCell(ret.y1) : '—'}</td>
-    <td class="hide-md">${ptVal ? '<span class="pt-cell">$'+fmt(ptVal)+'</span>' : '—'}</td>
-    <td class="hide-md">${upsideHtml}</td>
-    <td class="hide-md mktcap-cell">${mktCap ? fmtLarge(mktCap) : '—'}</td>
-  </tr>`;
-}
-
-function renderAllTables() {
-  ['core','hpc','demand','buildout','legacy'].forEach(g => {
-    buildHeader('thead-' + g === 'thead-main' ? 'thead-main' : 'thead-' + g);
-  });
-  buildHeader('thead-main');
-  buildHeader('thead-hpc');
-  buildHeader('thead-demand');
-  buildHeader('thead-buildout');
-  buildHeader('thead-legacy');
-
-  const groups = { core:'tbody-core', hpc:'tbody-hpc', demand:'tbody-demand', buildout:'tbody-buildout', legacy:'tbody-legacy' };
-  Object.entries(groups).forEach(([g, tbodyId]) => {
-    const tbody = document.getElementById(tbodyId);
-    if (!tbody) return;
-    tbody.innerHTML = GROUPS[g].tickers.map(t => renderRow(t, tbodyId)).join('');
-  });
-}
-
-function updateSpotlight() {
-  const q = quoteData['CORZ'];
-  const h = histData['CORZ'] || [];
-  const ret = computeReturns(h);
-  const pt = priceTargets['CORZ'];
-
-  if (q) {
-    document.getElementById('sp-price').textContent = '$' + fmt(q.price);
-    const dc = q.changesPercentage;
-    const el = document.getElementById('sp-change');
-    el.textContent = (dc >= 0 ? '▲' : '▼') + ' ' + Math.abs(dc).toFixed(2) + '%  (' + (dc>=0?'+':'') + fmt(q.change) + ')';
-    el.className = 'spot-change ' + (dc >= 0 ? 'pos' : 'neg');
-    document.getElementById('sp-mktcap').textContent = fmtLarge(q.marketCap);
-    document.getElementById('sp-vol').textContent = fmtLarge(q.volume);
-    const lo = q.yearLow, hi = q.yearHigh, p = q.price;
-    const pct = ((p-lo)/(hi-lo)*100).toFixed(0);
-    document.getElementById('sp-range').innerHTML = `$${fmt(lo,2)} – $${fmt(hi,2)} <span style="font-size:10px;color:var(--text-muted);">(${pct}th%)</span>`;
-  }
-  if (ret.w1 !== null) document.getElementById('sp-1w').innerHTML = pctCell(ret.w1);
-  if (ret.m1 !== null) document.getElementById('sp-1m').innerHTML = pctCell(ret.m1);
-  if (ret.ytd !== null) document.getElementById('sp-ytd').innerHTML = pctCell(ret.ytd);
-  if (ret.y1 !== null) document.getElementById('sp-1y').innerHTML = pctCell(ret.y1);
-
-  if (pt && quoteData['CORZ']) {
-    const price = quoteData['CORZ'].price;
-    const upside = (pt.priceTarget/price - 1)*100;
-    document.getElementById('sp-pt-label').textContent = `Analyst PT: $${fmt(pt.priceTarget)}`;
-    document.getElementById('sp-upside').textContent = (upside>=0?'+':'') + upside.toFixed(1) + '% upside';
-    document.getElementById('sp-upside').className = 'spot-upside ' + (upside>=0?'pos':'neg');
-    if (pt.consensus) {
-      const c = pt.consensus.toLowerCase();
-      document.getElementById('sp-consensus').textContent = pt.consensus.toUpperCase() + ' · ' + (pt.numAnalysts||'') + ' analysts';
-    }
-  }
-}
-
-// ---- FETCH (Yahoo Finance) ----
-async function fetchQuotes() {
-  // Yahoo v7 batch quote
-  const symbols = ALL_TICKERS.join(',');
-  try {
-    const url = `${YF1}/v7/finance/quote?symbols=${symbols}&lang=en-US&region=US`;
-    const data = await yfFetch(url);
-    const quotes = data?.quoteResponse?.result || [];
-    quotes.forEach(q => {
-      quoteData[q.symbol] = {
-        symbol: q.symbol,
-        price: q.regularMarketPrice,
-        change: q.regularMarketChange,
-        changesPercentage: q.regularMarketChangePercent,
-        marketCap: q.marketCap,
-        volume: q.regularMarketVolume,
-        yearHigh: q.fiftyTwoWeekHigh,
-        yearLow: q.fiftyTwoWeekLow,
-      };
-    });
-  } catch(e) { console.warn('Quote fetch error', e); }
-}
-
-async function fetchHistorical(ticker) {
-  try {
-    const url = `${YF1}/v8/finance/chart/${ticker}?interval=1d&range=1y`;
-    const data = await yfFetch(url);
-    const chart = data?.chart?.result?.[0];
-    if (!chart) return;
-    const timestamps = chart.timestamp || [];
-    const closes = chart.indicators?.quote?.[0]?.close || [];
-    histData[ticker] = timestamps.map((t, i) => ({
-      date: new Date(t * 1000).toISOString().slice(0,10),
-      close: closes[i],
-    })).filter(d => d.close != null);
-  } catch(e) { console.warn(`Hist error ${ticker}`, e); }
-}
-
-async function fetchPriceTargetConsensus(ticker) {
-  // Yahoo Finance quoteSummary financialData module has analyst targets
-  try {
-    const url = `${YF2}/v10/finance/quoteSummary/${ticker}?modules=financialData`;
-    const data = await yfFetch(url);
-    const fd = data?.quoteSummary?.result?.[0]?.financialData;
-    if (fd) {
-      priceTargets[ticker] = {
-        priceTarget: fd.targetMeanPrice?.raw,
-        targetHigh: fd.targetHighPrice?.raw,
-        targetLow: fd.targetLowPrice?.raw,
-        targetMedian: fd.targetMedianPrice?.raw,
-        consensus: fd.recommendationKey,
-        numAnalysts: fd.numberOfAnalystOpinions?.raw,
-      };
-    }
-  } catch(e) { console.warn(`PT error ${ticker}`, e); }
-}
-
-// ---- MAIN LOAD ----
-async function refreshAll() {
-  document.getElementById('loadingOverlay').classList.remove('hidden');
-  document.getElementById('loadingSub').textContent = 'Fetching quotes…';
-  document.getElementById('lastUpdated').textContent = '↻ Refreshing…';
-
-  await fetchQuotes();
-  document.getElementById('loadingSub').textContent = 'Loading historical data…';
-
-  // Fetch historical in parallel
-  await Promise.all(ALL_TICKERS.map(t => fetchHistorical(t)));
-  document.getElementById('loadingSub').textContent = 'Loading analyst targets…';
-
-  // Fetch price targets
-  await Promise.all(ALL_TICKERS.map(t => fetchPriceTargetConsensus(t)));
-
-  renderAllTables();
-  updateSpotlight();
-
-  const now = new Date();
-  document.getElementById('lastUpdated').textContent = 'Updated ' + now.toLocaleTimeString();
-  document.getElementById('loadingOverlay').classList.add('hidden');
-}
-
-// ---- FINANCIALS (Yahoo Finance) ----
-async function loadFinancials() {
-  const ticker = document.getElementById('finTicker').value;
-  const isQuarterly = finPeriod === 'quarter';
-  document.getElementById('fin-loading').textContent = 'Loading…';
-
-  const modules = isQuarterly
-    ? 'incomeStatementHistoryQuarterly,balanceSheetHistoryQuarterly,cashflowStatementHistoryQuarterly'
-    : 'incomeStatementHistory,balanceSheetHistory,cashflowStatementHistory';
-
-  try {
-    const url = `${YF2}/v10/finance/quoteSummary/${ticker}?modules=${modules}`;
-    const data = await yfFetch(url);
-    const res = data?.quoteSummary?.result?.[0];
-    if (!res) throw new Error('No data');
-
-    const incKey = isQuarterly ? 'incomeStatementHistoryQuarterly' : 'incomeStatementHistory';
-    const balKey = isQuarterly ? 'balanceSheetHistoryQuarterly'    : 'balanceSheetHistory';
-    const cfKey  = isQuarterly ? 'cashflowStatementHistoryQuarterly': 'cashflowStatementHistory';
-
-    const income  = (res[incKey]?.incomeStatementHistory  || []).map(flattenYF);
-    const balance = (res[balKey]?.balanceSheetStatements  || []).map(flattenYF);
-    const cf      = (res[cfKey]?.cashflowStatements       || []).map(flattenYF);
-
-    renderIncome(income);
-    renderBalance(balance);
-    renderCF(cf);
-    document.getElementById('fin-loading').textContent = '';
-  } catch(e) {
-    document.getElementById('fin-loading').textContent = 'Error: ' + e.message;
-    console.error(e);
-  }
-}
-
-// Yahoo Finance wraps each value as {raw, fmt} — flatten to raw numbers
-function flattenYF(obj) {
-  const out = {};
-  for (const [k, v] of Object.entries(obj)) {
-    out[k] = (v && typeof v === 'object' && 'raw' in v) ? v.raw : v;
-  }
-  // Map Yahoo field names to our renderer's expected names
-  out.revenue           = out.totalRevenue;
-  out.costOfRevenue     = out.costOfRevenue;
-  out.grossProfit       = out.grossProfit;
-  out.grossProfitRatio  = (out.grossProfit && out.totalRevenue) ? out.grossProfit / out.totalRevenue : null;
-  out.operatingExpenses = out.totalOperatingExpenses;
-  out.operatingIncome   = out.operatingIncome || out.ebit;
-  out.ebitda            = out.ebitda;
-  out.netIncome         = out.netIncome;
-  out.netIncomeRatio    = (out.netIncome && out.totalRevenue) ? out.netIncome / out.totalRevenue : null;
-  out.eps               = out.basicEps;
-  out.epsdiluted        = out.dilutedEps;
-  out.depreciationAndAmortization = out.depreciation || out.depreciationAndAmortization;
-  out.interestExpense   = out.interestExpense;
-  // Balance sheet mappings
-  out.cashAndCashEquivalents  = out.cash;
-  out.shortTermInvestments    = out.shortTermInvestments;
-  out.totalCurrentAssets      = out.totalCurrentAssets;
-  out.propertyPlantEquipmentNet = out.propertyPlantAndEquipmentGross || out.netPpe;
-  out.totalAssets             = out.totalAssets;
-  out.totalCurrentLiabilities = out.totalCurrentLiabilities;
-  out.longTermDebt            = out.longTermDebt;
-  out.totalDebt               = out.totalDebt || (out.longTermDebt || 0) + (out.shortLongTermDebt || 0);
-  out.totalLiabilities        = out.totalLiab;
-  out.totalStockholdersEquity = out.totalStockholderEquity;
-  // Cash flow mappings
-  out.operatingCashFlow           = out.totalCashFromOperatingActivities;
-  out.capitalExpenditure          = out.capitalExpenditures;
-  out.acquisitionsNet             = out.acquisitions;
-  out.netCashUsedForInvestingActivites = out.totalCashflowsFromInvestingActivities;
-  out.repaymentOfDebt             = out.repaymentOfDebt || out.longTermDebtRepayment;
-  out.commonStockIssued           = out.issuanceOfStock;
-  out.netCashUsedProvidedByFinancingActivities = out.totalCashFromFinancingActivities;
-  out.freeCashFlow                = (out.totalCashFromOperatingActivities && out.capitalExpenditures)
-                                      ? out.totalCashFromOperatingActivities + out.capitalExpenditures : null;
-  out.netChangeInCash             = out.changeInCash;
-  // Date label
-  const d = out.endDate?.fmt || out.endDate;
-  out.period = d ? d.slice(0,7) : '—';
-  return out;
-}
-
-function finHeaders(data, headId) {
-  const head = document.getElementById(headId);
-  if (!head || !data || !data.length) return;
-  head.innerHTML = '<th style="text-align:left;">Metric</th>' +
-    data.slice(0,5).map(d => `<th>${d.period || d.date?.slice(0,7) || d.date?.slice(0,4)}</th>`).join('');
-}
-
-function finRow(label, data, field, formatter, isBold=false) {
-  const cls = isBold ? ' class="fin-row-bold"' : '';
-  const cells = data.slice(0,5).map(d => {
-    const v = d[field];
-    return `<td>${v !== undefined && v !== null ? formatter(v) : '—'}</td>`;
-  }).join('');
-  return `<tr${cls}><td>${label}</td>${cells}</tr>`;
-}
-
-function finSectionHeader(label) {
-  return `<tr class="fin-section-header"><td colspan="6">${label}</td></tr>`;
-}
-
-function renderIncome(data) {
-  if (!data || !data.length) { document.getElementById('fin-income-body').innerHTML = '<tr><td colspan="6" style="color:var(--text-muted);padding:12px;">No data</td></tr>'; return; }
-  finHeaders(data, 'fin-income-head');
-  const f = v => (v>=0?'':'-') + '$' + fmtLarge(Math.abs(v));
-  document.getElementById('fin-income-body').innerHTML =
-    finSectionHeader('Revenue') +
-    finRow('Revenue', data, 'revenue', f, true) +
-    finRow('Cost of Revenue', data, 'costOfRevenue', f) +
-    finRow('Gross Profit', data, 'grossProfit', f, true) +
-    finRow('Gross Margin', data, 'grossProfitRatio', v => (v*100).toFixed(1)+'%') +
-    finSectionHeader('Expenses & Income') +
-    finRow('Operating Expenses', data, 'operatingExpenses', f) +
-    finRow('Operating Income', data, 'operatingIncome', f, true) +
-    finRow('EBITDA', data, 'ebitda', f, true) +
-    finRow('Net Income', data, 'netIncome', f, true) +
-    finRow('Net Margin', data, 'netIncomeRatio', v => (v*100).toFixed(1)+'%') +
-    finSectionHeader('Per Share') +
-    finRow('EPS (Basic)', data, 'eps', v => '$'+fmt(v)) +
-    finRow('EPS (Diluted)', data, 'epsdiluted', v => '$'+fmt(v)) +
-    finRow('D&A', data, 'depreciationAndAmortization', f) +
-    finRow('Interest Expense', data, 'interestExpense', f);
-}
-
-function renderBalance(data) {
-  if (!data || !data.length) { document.getElementById('fin-balance-body').innerHTML = '<tr><td colspan="6" style="color:var(--text-muted);padding:12px;">No data</td></tr>'; return; }
-  finHeaders(data, 'fin-balance-head');
-  const f = v => (v>=0?'':'-') + '$' + fmtLarge(Math.abs(v));
-  document.getElementById('fin-balance-body').innerHTML =
-    finSectionHeader('Assets') +
-    finRow('Cash & Equivalents', data, 'cashAndCashEquivalents', f, true) +
-    finRow('Short-Term Investments', data, 'shortTermInvestments', f) +
-    finRow('Total Current Assets', data, 'totalCurrentAssets', f) +
-    finRow('PP&E', data, 'propertyPlantEquipmentNet', f) +
-    finRow('Total Assets', data, 'totalAssets', f, true) +
-    finSectionHeader('Liabilities & Equity') +
-    finRow('Total Current Liabilities', data, 'totalCurrentLiabilities', f) +
-    finRow('Long-Term Debt', data, 'longTermDebt', f, true) +
-    finRow('Total Debt', data, 'totalDebt', f) +
-    finRow('Total Liabilities', data, 'totalLiabilities', f) +
-    finRow('Shareholders\' Equity', data, 'totalStockholdersEquity', f, true) +
-    finSectionHeader('Ratios') +
-    finRow('Debt / Equity', data, 'totalDebt', (v,i) => {
-      const eq = data[0].totalStockholdersEquity; return eq ? fmt(v/eq,2)+'x' : '—';
-    });
-}
-
-function renderCF(data) {
-  if (!data || !data.length) { document.getElementById('fin-cf-body').innerHTML = '<tr><td colspan="6" style="color:var(--text-muted);padding:12px;">No data</td></tr>'; return; }
-  finHeaders(data, 'fin-cf-head');
-  const f = v => (v>=0?'':'-') + '$' + fmtLarge(Math.abs(v));
-  document.getElementById('fin-cf-body').innerHTML =
-    finSectionHeader('Operating') +
-    finRow('Net Income', data, 'netIncome', f) +
-    finRow('D&A', data, 'depreciationAndAmortization', f) +
-    finRow('Operating Cash Flow', data, 'operatingCashFlow', f, true) +
-    finSectionHeader('Investing') +
-    finRow('Capital Expenditures', data, 'capitalExpenditure', f, true) +
-    finRow('Acquisitions', data, 'acquisitionsNet', f) +
-    finRow('Investing Cash Flow', data, 'netCashUsedForInvestingActivites', f) +
-    finSectionHeader('Financing') +
-    finRow('Debt Repayment', data, 'repaymentOfDebt', f) +
-    finRow('Stock Issuance', data, 'commonStockIssued', f) +
-    finRow('Financing Cash Flow', data, 'netCashUsedProvidedByFinancingActivities', f) +
-    finSectionHeader('Summary') +
-    finRow('Free Cash Flow', data, 'freeCashFlow', f, true) +
-    finRow('Net Change in Cash', data, 'netChangeInCash', f);
-}
-
-function setPeriod(p) {
-  finPeriod = p;
-  document.getElementById('btn-annual').classList.toggle('active', p === 'annual');
-  document.getElementById('btn-quarter').classList.toggle('active', p === 'quarter');
-  loadFinancials();
-}
-
-// ---- ANALYST (Yahoo Finance) ----
-async function loadAnalyst() {
-  const ticker = document.getElementById('analystTicker').value;
-  document.getElementById('analyst-loading').textContent = 'Loading…';
-  document.getElementById('analyst-consensus-wrap').innerHTML = '';
-
-  try {
-    const url = `${YF2}/v10/finance/quoteSummary/${ticker}?modules=financialData,recommendationTrend,upgradeDowngradeHistory`;
-    const data = await yfFetch(url);
-    const res = data?.quoteSummary?.result?.[0];
-    const fd = res?.financialData || {};
-    const upgrades = res?.upgradeDowngradeHistory?.history || [];
-
-    const price = quoteData[ticker]?.price;
-    const ptMean   = fd.targetMeanPrice?.raw;
-    const ptHigh   = fd.targetHighPrice?.raw;
-    const ptLow    = fd.targetLowPrice?.raw;
-    const ptMedian = fd.targetMedianPrice?.raw;
-    const numAn    = fd.numberOfAnalystOpinions?.raw;
-    const recKey   = fd.recommendationKey;
-
-    // Summary cards
-    const upside = (ptMean && price) ? (ptMean/price - 1)*100 : null;
-    const cards = [
-      { label: 'Consensus PT',  val: ptMean   ? '$'+fmt(ptMean)   : '—', sub: `${numAn||'?'} analysts` },
-      { label: 'PT High',       val: ptHigh   ? '$'+fmt(ptHigh)   : '—', sub: 'bull case' },
-      { label: 'PT Low',        val: ptLow    ? '$'+fmt(ptLow)    : '—', sub: 'bear case' },
-      { label: 'Upside to PT',  val: upside !== null ? fmtPct(upside) : '—',
-        sub: 'vs current price', cls: upside !== null ? pctClass(upside) : '' },
-    ];
-    document.getElementById('analyst-summary').innerHTML = cards.map(c => `
-      <div style="background:var(--bg1);border:1px solid var(--border);padding:14px 16px;">
-        <div style="font-size:9px;letter-spacing:0.15em;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">${c.label}</div>
-        <div style="font-size:20px;font-weight:700;" class="${c.cls||''}">${c.val}</div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${c.sub}</div>
+// ─────── Render sliders ───────
+function buildSliders() {
+  SLIDERS.forEach(sl => {
+    const panel = document.querySelector(`.panel[data-section="${sl.section}"]`);
+    const row = document.createElement('div');
+    row.className = 'slider-row';
+    row.dataset.id = sl.id;
+    row.innerHTML = `
+      <div class="slider-meta">
+        <span class="lbl">${sl.label}<span class="hint">${sl.hint}</span></span>
+        <span class="val" id="val-${sl.id}">${sl.fmt(state[sl.id])}</span>
       </div>
-    `).join('');
+      <input type="range" min="${sl.min}" max="${sl.max}" step="${sl.step}" value="${state[sl.id]}" id="rng-${sl.id}">
+      <div class="slider-range">
+        <span>${sl.fmt(sl.min)}</span>
+        <span class="slider-default" id="def-${sl.id}">default · ${sl.fmt(SCENARIOS[scenario][sl.id])}</span>
+        <span>${sl.fmt(sl.max)}</span>
+      </div>
+    `;
+    panel.appendChild(row);
+    const input = row.querySelector('input');
+    input.addEventListener('input', () => {
+      state[sl.id] = parseFloat(input.value);
+      document.getElementById('val-'+sl.id).textContent = sl.fmt(state[sl.id]);
+      checkModified(sl.id);
+      render();
+    });
+  });
+}
 
-    // Consensus badge
-    if (recKey) {
-      const isBuy  = recKey.includes('buy');
-      const isSell = recKey.includes('sell');
-      const cls    = isBuy ? 'consensus-buy' : isSell ? 'consensus-sell' : 'consensus-hold';
-      document.getElementById('analyst-consensus-wrap').innerHTML =
-        `<span class="consensus-badge ${cls}">${recKey.toUpperCase().replace('-',' ')}</span>`;
-    }
-
-    // Upgrade/downgrade history table
-    const tbody = document.getElementById('analyst-tbody');
-    if (!upgrades.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text-muted);padding:16px;text-align:center;">No analyst history available</td></tr>';
-    } else {
-      tbody.innerHTML = upgrades.slice(0,25).map(u => {
-        const action = u.action || '';
-        const rating = u.toGrade || u.fromGrade || '—';
-        const rColor = rating.toLowerCase().includes('buy')  ? 'var(--green)'
-                     : rating.toLowerCase().includes('sell') ? 'var(--red)'
-                     : 'var(--amber)';
-        const actionColor = action === 'up' ? 'var(--green)' : action === 'down' ? 'var(--red)' : 'var(--text-dim)';
-        const actionLabel = action === 'up' ? '▲ Upgrade' : action === 'down' ? '▼ Downgrade' : action === 'init' ? '● Initiate' : action;
-        const dateStr = u.epochGradeDate ? new Date(u.epochGradeDate*1000).toISOString().slice(0,10) : '—';
-        return `<tr>
-          <td style="text-align:left;">—</td>
-          <td style="text-align:left;color:var(--text-dim);">${u.firm || '—'}</td>
-          <td><span style="color:${actionColor};font-size:11px;">${actionLabel}</span></td>
-          <td><span style="color:${rColor};font-weight:600;">${rating}</span></td>
-          <td style="color:var(--text-muted);font-size:11px;">${u.fromGrade ? u.fromGrade + ' → ' + u.toGrade : u.toGrade || '—'}</td>
-          <td style="color:var(--text-muted);">${dateStr}</td>
-        </tr>`;
-      }).join('');
-    }
-
-    document.getElementById('analyst-loading').textContent = '';
-  } catch(e) {
-    document.getElementById('analyst-loading').textContent = 'Error: ' + e.message;
-    console.error(e);
+function checkModified(id) {
+  const def = SCENARIOS[scenario][id];
+  const defEl = document.getElementById('def-'+id);
+  if (Math.abs(state[id] - def) > 1e-9) {
+    defEl.classList.add('modified');
+    defEl.textContent = `modified · default ${SLIDERS.find(s=>s.id===id).fmt(def)}`;
+  } else {
+    defEl.classList.remove('modified');
+    defEl.textContent = `default · ${SLIDERS.find(s=>s.id===id).fmt(def)}`;
   }
 }
 
-// ---- TABS ----
-function switchTab(name) {
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.remove('active'));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  const tabMap = { overview: 0, financials: 1, analyst: 2 };
-  document.querySelectorAll('.tab')[tabMap[name]].classList.add('active');
-  document.getElementById('tab-' + name).classList.add('active');
+// ─────── Render output ───────
+function renderValueGauge(r, upsideR, baseR) {
+  const MARKET = 28.83;
+  const SCALE_MIN = 20, SCALE_MAX = 35;
+  const range = SCALE_MAX - SCALE_MIN;
+  const container = document.getElementById('gauge-rows');
+  if (!container) return;
 
-  if (name === 'financials') loadFinancials();
-  if (name === 'analyst') loadAnalyst();
+  const pctOf = v => Math.max(0, Math.min(100, ((v - SCALE_MIN) / range) * 100));
+
+  const rows = [
+    { cls: 'market', name: 'Market', val: MARKET },
+    { cls: 'base',   name: 'Base',   val: baseR.perShare },
+    { cls: 'upside', name: 'Upside', val: upsideR.perShare }
+  ];
+
+  container.innerHTML = rows.map(row => `
+    <div class="gauge-row ${row.cls}">
+      <span class="g-name">${row.name}</span>
+      <div class="g-line"><div class="g-mark" style="left: ${pctOf(row.val).toFixed(2)}%"></div></div>
+      <span class="g-val">$${row.val.toFixed(2)}</span>
+    </div>
+  `).join('');
+
+  // Implied probability annotation
+  const impProb = (MARKET - baseR.perShare) / (upsideR.perShare - baseR.perShare) * 100;
+  const noteEl = document.getElementById('gauge-impprob');
+  if (noteEl) {
+    noteEl.textContent = (impProb >= 0 ? '' : '−') + Math.abs(impProb).toFixed(0) + '%';
+    noteEl.style.color = impProb < 0 ? 'var(--neg)' : impProb > 100 ? 'var(--accent-up)' : 'var(--pos)';
+  }
 }
 
-function quickSelect(ticker) {
-  document.getElementById('finTicker').value = ticker;
-  document.getElementById('analystTicker').value = ticker;
+function renderWaterfall(r, baseR, upsideR) {
+  const svg = document.getElementById('waterfall-svg');
+  if (!svg) return;
+
+  // Combine the adjustment items into a single signed bucket
+  const adjustments = r.adds - r.sbc - r.otherDed;  // signed sum
+
+  const buckets = [
+    { name: 'CW Lease',            val: r.vCW,                 sign:  1 },
+    { name: 'Next Lease',          val: r.vPecos,              sign:  1 },
+    { name: 'Q1 2026 Acq. Assets', val: r.vOpt,                sign:  1 },
+    { name: 'Adjustments',         val: Math.abs(adjustments), sign: adjustments >= 0 ? 1 : -1 }
+  ];
+
+  // Running totals
+  let cumulative = 0;
+  const bars = buckets.map(b => {
+    const start = cumulative;
+    const end = start + b.sign * b.val;
+    cumulative = end;
+    return { ...b, start, end };
+  });
+  bars.push({ name: 'Equity', val: r.equity, sign: 0, start: 0, end: r.equity, isTotal: true });
+
+  // Constant Y-axis: compute peak cumulative across ALL scenarios (base + upside + current)
+  // This way toggling base→upside makes the bars visibly EXPAND rather than rescale.
+  function peakOf(sc) {
+    const adj = sc.adds - sc.sbc - sc.otherDed;
+    const seq = [sc.vCW, sc.vPecos, sc.vOpt, adj];
+    let cum = 0, peak = 0, trough = 0;
+    for (const v of seq) {
+      cum += v;
+      if (cum > peak) peak = cum;
+      if (cum < trough) trough = cum;
+    }
+    return { peak, trough };
+  }
+  const peaks = [baseR, upsideR, r].map(peakOf);
+  const overallPeak = Math.max(...peaks.map(p => p.peak));
+  const overallTrough = Math.min(0, ...peaks.map(p => p.trough));
+  // Round up to nearest $4B (gives clean tick steps: 0/5/10/15/20 at yMax=$20B, 0/4/8/12/16 at yMax=$16B)
+  const yMaxStep = 4000;
+  const yMax = Math.ceil((overallPeak * 1.05) / yMaxStep) * yMaxStep;
+  const yMin = overallTrough < 0 ? Math.floor(overallTrough / 1000) * 1000 - 1000 : 0;
+  const yRange = yMax - yMin;
+
+  // SVG dimensions (matches viewBox)
+  const W = 1200, H = 280;
+  const ml = 72, mr = 20, mt = 30, mb = 52;
+  const innerW = W - ml - mr;
+  const innerH = H - mt - mb;
+
+  function yScale(v) { return mt + (yMax - v) / yRange * innerH; }
+  const slot = innerW / bars.length;
+  const barW = slot * 0.56;
+  const padW = (slot - barW) / 2;
+
+  let svgContent = '';
+
+  // Gridlines — 4 intervals (5 lines: 0, 4B, 8B, 12B, 16B for yMax=16)
+  const yTicks = 4;
+  for (let i = 0; i <= yTicks; i++) {
+    const v = yMin + (yRange * i) / yTicks;
+    const y = yScale(v);
+    svgContent += `<line class="wf-gridline" x1="${ml}" y1="${y}" x2="${W - mr}" y2="${y}"/>`;
+    const b = v / 1000;
+    const labelText = (b % 1 === 0 ? b.toFixed(0) : b.toFixed(1));
+    svgContent += `<text class="wf-yaxis-label" x="${ml - 8}" y="${y + 4}">$${labelText}B</text>`;
+  }
+
+  // Zero baseline
+  const y0 = yScale(0);
+  svgContent += `<line class="wf-axis" x1="${ml}" y1="${y0}" x2="${W - mr}" y2="${y0}"/>`;
+
+  // Bars + labels
+  const valFmt = (v) => v >= 1000 ? '$' + (v / 1000).toFixed(2) + 'B' : '$' + Math.round(v) + 'M';
+
+  bars.forEach((b, i) => {
+    const x = ml + i * slot + padW;
+    const yTop = yScale(Math.max(b.start, b.end));
+    const yBot = yScale(Math.min(b.start, b.end));
+    const h = Math.max(2, yBot - yTop);
+    const cls = b.isTotal ? 'total' : (b.sign > 0 ? 'pos' : 'neg');
+    svgContent += `<rect class="wf-bar ${cls}" x="${x}" y="${yTop}" width="${barW}" height="${h}"/>`;
+
+    // Value label above bar
+    const labelVal = b.isTotal ? valFmt(b.val) : (b.sign > 0 ? '+' : '−') + valFmt(b.val);
+    svgContent += `<text class="wf-val-label" x="${x + barW/2}" y="${yTop - 8}">${labelVal}</text>`;
+
+    // Category label below
+    svgContent += `<text class="wf-cat-label" x="${x + barW/2}" y="${H - 28}">${b.name}</text>`;
+    if (b.isTotal) {
+      svgContent += `<text class="wf-cat-label" x="${x + barW/2}" y="${H - 12}" style="font-weight:700;fill:var(--ink);font-size:11px;">$${(b.val / 435).toFixed(2)}/sh</text>`;
+    } else {
+      // Per-share label below the category name for contribution bars
+      const ps = (b.sign * b.val) / 435;
+      svgContent += `<text class="wf-cat-label" x="${x + barW/2}" y="${H - 12}" style="font-size:9px;">${ps >= 0 ? '+' : '−'}$${Math.abs(ps).toFixed(2)}/sh</text>`;
+    }
+
+    // Connector to next bar (skip if next is total)
+    if (i < bars.length - 1 && !bars[i + 1].isTotal) {
+      const xNext = ml + (i + 1) * slot + padW;
+      const yConn = yScale(b.end);
+      svgContent += `<line class="wf-connector" x1="${x + barW}" y1="${yConn}" x2="${xNext}" y2="${yConn}"/>`;
+    }
+  });
+
+  svg.innerHTML = svgContent;
+
+  // Header total label
+  const totalLabel = document.getElementById('wf-total-label');
+  if (totalLabel) totalLabel.textContent = '$' + (r.equity / 1000).toFixed(2) + 'B  ·  $' + (r.equity / 435).toFixed(2) + '/sh';
 }
 
-// ---- INIT ----
-refreshAll();
+function render() {
+  const r = compute(state);
+  const baseR = compute(SCENARIOS.base);
+  const upsideR = compute(SCENARIOS.upside);
+
+  document.getElementById('big-num').textContent = r.perShare.toFixed(2);
+  document.getElementById('big-eq').textContent = fmtBunsigned(r.equity);
+  document.getElementById('big-delta').textContent = fmtDelta(r.perShare, baseR.perShare);
+
+  // Implied yield-on-cost
+  const yocEl = document.getElementById('pecos-yoc');
+  const badgeEl = document.getElementById('pecos-yoc-badge');
+  if (yocEl && badgeEl) {
+    yocEl.textContent = r.yoc.toFixed(1) + '%';
+    let bg = 'transparent', fg = 'var(--ink-muted)';
+    if (r.yoc >= 12 && r.yoc <= 14) { bg = 'rgba(45,80,22,0.12)'; fg = 'var(--pos)'; }
+    else if ((r.yoc >= 10 && r.yoc < 12) || (r.yoc > 14 && r.yoc <= 16)) { bg = 'rgba(184,82,28,0.10)'; fg = 'var(--accent-up)'; }
+    else { bg = 'rgba(139,44,28,0.10)'; fg = 'var(--neg)'; }
+    badgeEl.style.background = bg;
+    badgeEl.style.color = fg;
+    badgeEl.style.padding = '3px 8px';
+    badgeEl.style.borderRadius = '2px';
+  }
+
+  // Decomposition rows
+  const rows = {
+    cw: r.breakdown.cw, pe: r.breakdown.pe, mh: r.breakdown.mh,
+    ad: r.breakdown.ad, sb: r.breakdown.sb, de: r.breakdown.de
+  };
+  const baseRows = {
+    cw: baseR.breakdown.cw, pe: baseR.breakdown.pe, mh: baseR.breakdown.mh,
+    ad: baseR.breakdown.ad, sb: baseR.breakdown.sb, de: baseR.breakdown.de
+  };
+  Object.entries(rows).forEach(([k, v]) => {
+    const sign = v.sign;
+    const signedVal = sign * v.val;
+    const signedPS = sign * v.ps;
+    const signedBasePS = baseRows[k].sign * baseRows[k].ps;
+    document.getElementById('r-'+k+'-val').textContent = fmtB(signedVal);
+    document.getElementById('r-'+k+'-ps').textContent = fmtPS(signedPS);
+    document.getElementById('r-'+k+'-d').textContent = fmtDelta(signedPS, signedBasePS);
+  });
+
+  // Total row
+  document.getElementById('r-tt-val').textContent = fmtBunsigned(r.equity);
+  document.getElementById('r-tt-ps').textContent = fmtPSunsigned(r.perShare);
+  document.getElementById('r-tt-d').textContent = fmtDelta(r.perShare, baseR.perShare);
+
+  // New visualizations
+  renderValueGauge(r, upsideR, baseR);
+  renderWaterfall(r, baseR, upsideR);
+
+  // Update scenario label on waterfall header
+  const scenLabel = document.getElementById('wf-scenario-label');
+  if (scenLabel) scenLabel.textContent = scenario === 'base' ? 'Base case' : 'Upside case';
+}
+
+// ─────── Scenario switching ───────
+function switchScenario(s) {
+  scenario = s;
+  document.documentElement.dataset.scenario = s;
+  document.querySelectorAll('.scenario-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.scenario === s);
+  });
+  state = { ...SCENARIOS[s] };
+  SLIDERS.forEach(sl => {
+    document.getElementById('rng-'+sl.id).value = state[sl.id];
+    document.getElementById('val-'+sl.id).textContent = sl.fmt(state[sl.id]);
+    checkModified(sl.id);
+  });
+  render();
+}
+
+// ─────── Wire up ───────
+document.querySelectorAll('.scenario-btn').forEach(b => {
+  b.addEventListener('click', () => switchScenario(b.dataset.scenario));
+});
+document.getElementById('reset-btn').addEventListener('click', () => {
+  switchScenario(scenario);
+});
+
+// Build
+buildSliders();
+SLIDERS.forEach(sl => checkModified(sl.id));
+render();
 </script>
 </body>
 </html>
